@@ -14,6 +14,7 @@ venv/
 # Database files
 app.db
 *.sqlite3
+uploads/
 
 # IDE/editor
 .vscode/
@@ -26,4 +27,5 @@ app.db
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-
+API_AGENT_GUIDE.md
+NEXT_AGENT_CONTEXT.md

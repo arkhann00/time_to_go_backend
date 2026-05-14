@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,9 +10,15 @@ from src.auth.schema.user import (
     UserLogin,
     UserRegister,
     UserResponse,
+    UserUpdate,
 )
 from src.auth.security import create_access_token, decode_token
-from src.auth.services import authenticate_user, register_user
+from src.auth.services import (
+    authenticate_user,
+    register_user,
+    save_user_avatar,
+    update_user_profile,
+)
 from src.db.session import get_db
 
 
@@ -59,3 +65,23 @@ async def refresh_access_token(
 
     new_access_token = create_access_token(sub=str(user.id))
     return TokenResponse(access_token=new_access_token)
+
+
+@router.patch("/me")
+async def update_me(
+    payload: UserUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> UserResponse:
+    updated_user = await update_user_profile(current_user, payload, db)
+    return UserResponse.model_validate(updated_user)
+
+
+@router.post("/me/avatar")
+async def upload_my_avatar(
+    avatar: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> UserResponse:
+    updated_user = await save_user_avatar(current_user, avatar, db)
+    return UserResponse.model_validate(updated_user)

@@ -36,6 +36,20 @@ API: http://127.0.0.1:8000
 Swagger: http://127.0.0.1:8000/docs
 ```
 
+## Профиль пользователя
+
+Защищенные ручки (нужен `Authorization: Bearer <token>`):
+
+- `GET /auth/me` — получить текущий профиль
+- `PATCH /auth/me` — обновить свой профиль (поля `name`, `about`)
+- `POST /auth/me/avatar` — загрузить свою аватарку (`multipart/form-data`, поле `avatar`)
+
+Ограничения для аватарки:
+
+- поддерживаются: `JPEG`, `PNG`, `WEBP`, `GIF`
+- максимальный размер: `5MB`
+- после загрузки backend сохраняет файл в `uploads/avatars` и возвращает путь в `avatar_url`
+
 Ручки по новообращённым:
 - `GET /believers/my` — только свои
 - `GET /believers/all` — все новообращённые

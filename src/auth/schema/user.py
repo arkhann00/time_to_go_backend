@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr
 from pydantic import ConfigDict
+from pydantic import field_validator
 
 
 class UserRegister(BaseModel):
@@ -7,10 +8,24 @@ class UserRegister(BaseModel):
     email: EmailStr
     password: str
 
+    @field_validator("password")
+    @classmethod
+    def validate_password_length(cls, value: str) -> str:
+        if len(value.encode("utf-8")) > 72:
+            raise ValueError("Пароль слишком длинный. Максимум 72 байта.")
+        return value
+
 
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_length(cls, value: str) -> str:
+        if len(value.encode("utf-8")) > 72:
+            raise ValueError("Пароль слишком длинный. Максимум 72 байта.")
+        return value
 
 
 class UserResponse(BaseModel):
@@ -30,3 +45,8 @@ class TokenResponse(BaseModel):
 
 class TokenRefreshRequest(BaseModel):
     access_token: str
+
+
+class UserUpdate(BaseModel):
+    name: str | None = None
+    about: str | None = None

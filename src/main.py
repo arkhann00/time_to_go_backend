@@ -1,6 +1,8 @@
 import uvicorn
+from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from src.auth.routers import router as auth_router
 from src.believers.methods_router import router as methods_router
@@ -8,6 +10,9 @@ from src.believers.routers import router as believers_router
 
 
 app = FastAPI()
+uploads_dir = Path("uploads")
+uploads_dir.mkdir(exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
 
 app.include_router(auth_router)
