@@ -1,6 +1,6 @@
 from datetime import date
 
-from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from src.believers.models.believer import ChristianStage
 from src.believers.schema.method import MethodResponse
@@ -14,6 +14,7 @@ class BelieverBase(BaseModel):
     stage: ChristianStage
     method_id: int
     note: str | None = None
+    testimony: str | None = None
     latitude: float
     longitude: float
 
@@ -23,13 +24,6 @@ class BelieverBase(BaseModel):
         if isinstance(value, str) and not value.strip():
             return None
         return value
-
-    @model_validator(mode="after")
-    def ensure_contact(self) -> "BelieverBase":
-        if not self.telegram and not self.phone_number:
-            raise ValueError("Укажите хотя бы telegram или номер телефона.")
-        return self
-
 
 class BelieverCreate(BelieverBase):
     pass
@@ -43,6 +37,7 @@ class BelieverUpdate(BaseModel):
     stage: ChristianStage | None = None
     method_id: int | None = None
     note: str | None = None
+    testimony: str | None = None
     latitude: float | None = None
     longitude: float | None = None
 
@@ -53,13 +48,6 @@ class BelieverUpdate(BaseModel):
             return None
         return value
 
-    @model_validator(mode="after")
-    def ensure_contact_if_both_set_empty(self) -> "BelieverUpdate":
-        if self.telegram == "" and self.phone_number == "":
-            raise ValueError("Укажите хотя бы telegram или номер телефона.")
-        return self
-
-
 class BelieverResponse(BaseModel):
     id: int
     name: str
@@ -68,6 +56,7 @@ class BelieverResponse(BaseModel):
     met_at: date
     stage: ChristianStage
     note: str | None
+    testimony: str | None
     latitude: float
     longitude: float
     method: MethodResponse

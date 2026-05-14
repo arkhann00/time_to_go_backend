@@ -3,7 +3,6 @@ from enum import Enum
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
-    CheckConstraint,
     Date,
     DateTime,
     Enum as SqlEnum,
@@ -23,21 +22,15 @@ if TYPE_CHECKING:
 
 
 class ChristianStage(str, Enum):
-    INTERESTED_IN_FAITH = "Интересуется верой"
-    ACCEPTED_JESUS = "Принял Иисуса"
-    CAME_TO_CHURCH = "Пришел в церковь"
-    BAPTIZED = "Крестился"
-    PREACHES_GOSPEL = "Проповедует Евангелие"
+    INTERESTED = "interested"
+    RECEIVED_JESUS = "receivedJesus"
+    JOINED_COMMUNITY = "joinedCommunity"
+    BAPTISED = "baptised"
+    EVANGELIST = "evangelist"
 
 
 class Believer(Base):
     __tablename__ = "believers"
-    __table_args__ = (
-        CheckConstraint(
-            "telegram IS NOT NULL OR phone_number IS NOT NULL",
-            name="ck_believers_contact_exists",
-        ),
-    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(
@@ -47,9 +40,17 @@ class Believer(Base):
     telegram: Mapped[str | None] = mapped_column(String(255), nullable=True)
     phone_number: Mapped[str | None] = mapped_column(String(64), nullable=True)
     met_at: Mapped[date] = mapped_column(Date)
-    stage: Mapped[ChristianStage] = mapped_column(SqlEnum(ChristianStage))
+    stage: Mapped[ChristianStage] = mapped_column(
+        SqlEnum(
+            ChristianStage,
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+            native_enum=False,
+            name="christianstage",
+        )
+    )
     method_id: Mapped[int] = mapped_column(ForeignKey("evangelism_methods.id"))
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    testimony: Mapped[str | None] = mapped_column(Text, nullable=True)
     latitude: Mapped[float] = mapped_column(Float)
     longitude: Mapped[float] = mapped_column(Float)
     created_at: Mapped[datetime] = mapped_column(

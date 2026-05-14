@@ -35,3 +35,10 @@ docker compose up --build
 API: http://127.0.0.1:8000
 Swagger: http://127.0.0.1:8000/docs
 ```
+
+Ручки по новообращённым:
+- `GET /believers/my` — только свои
+- `GET /believers/all` — все новообращённые
+- `GET /believers/testimony-of-day?day=2026-05-14` — свидетельство дня (если `day` не передан, берется сегодня)
+- `GET /believers/stats/accepted-jesus-count` — общее количество людей со стадией выше `interested`
+- `GET /believers/latest?date_from=2026-05-01&date_to=2026-05-31` — последние 20 по `met_at` с фильтром по дате

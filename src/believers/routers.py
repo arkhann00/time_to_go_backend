@@ -1,11 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from datetime import date
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.auth.dependencies import get_current_user
 from src.auth.models.user import User
-from src.believers.models.believer import Believer
+from src.believers.models.believer import Believer, ChristianStage
 from src.believers.schema.believer import (
     BelieverCreate,
     BelieverResponse,
@@ -15,14 +17,6 @@ from src.believers.services import get_available_method
 from src.db.session import get_db
 
 router = APIRouter(prefix="/believers", tags=["Believers"])
-
-
-def _ensure_has_contact(telegram: str | None, phone_number: str | None) -> None:
-    if not telegram and not phone_number:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Укажите хотя бы telegram или номер телефона.",
-        )
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
@@ -49,6 +43,7 @@ async def create_believer(
         stage=payload.stage,
         method_id=payload.method_id,
         note=payload.note,
+        testimony=payload.testimony,
         latitude=payload.latitude,
         longitude=payload.longitude,
     )
@@ -73,6 +68,88 @@ async def list_believers(
         .order_by(Believer.met_at.desc())
         .options(selectinload(Believer.method))
     )
+    return [BelieverResponse.model_validate(item) for item in believers]
+
+
+@router.get("/my")
+async def list_my_believers(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[BelieverResponse]:
+    believers = await db.scalars(
+        select(Believer)
+        .where(Believer.user_id == current_user.id)
+        .order_by(Believer.met_at.desc())
+        .options(selectinload(Believer.method))
+    )
+    return [BelieverResponse.model_validate(item) for item in believers]
+
+
+@router.get("/all")
+async def list_all_believers(
+    db: AsyncSession = Depends(get_db),
+) -> list[BelieverResponse]:
+    believers = await db.scalars(
+        select(Believer)
+        .order_by(Believer.met_at.desc())
+        .options(selectinload(Believer.method))
+    )
+    return [BelieverResponse.model_validate(item) for item in believers]
+
+
+@router.get("/testimony-of-day")
+async def testimony_of_day(
+    day: date | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+) -> BelieverResponse:
+    target_day = day or date.today()
+
+    testimony_filter = (Believer.testimony.is_not(None), Believer.testimony != "")
+    total_with_testimony = await db.scalar(
+        select(func.count(Believer.id)).where(*testimony_filter)
+    )
+    if not total_with_testimony:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Нет новообращенных со свидетельством.",
+        )
+
+    day_index = target_day.toordinal() % total_with_testimony
+    believer = await db.scalar(
+        select(Believer)
+        .where(*testimony_filter)
+        .order_by(Believer.id)
+        .offset(day_index)
+        .limit(1)
+        .options(selectinload(Believer.method))
+    )
+    return BelieverResponse.model_validate(believer)
+
+
+@router.get("/stats/accepted-jesus-count")
+async def accepted_jesus_count(
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, int]:
+    total = await db.scalar(
+        select(func.count(Believer.id)).where(Believer.stage != ChristianStage.INTERESTED)
+    )
+    return {"count": total or 0}
+
+
+@router.get("/latest")
+async def latest_believers(
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+) -> list[BelieverResponse]:
+    stmt = select(Believer).options(selectinload(Believer.method))
+
+    if date_from is not None:
+        stmt = stmt.where(Believer.met_at >= date_from)
+    if date_to is not None:
+        stmt = stmt.where(Believer.met_at <= date_to)
+
+    believers = await db.scalars(stmt.order_by(Believer.met_at.desc()).limit(20))
     return [BelieverResponse.model_validate(item) for item in believers]
 
 
@@ -127,8 +204,6 @@ async def update_believer(
 
     for field, value in updates.items():
         setattr(believer, field, value)
-
-    _ensure_has_contact(believer.telegram, believer.phone_number)
 
     await db.commit()
     believer = await db.scalar(
