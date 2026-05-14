@@ -46,7 +46,7 @@ Swagger: http://127.0.0.1:8000/docs
 
 Ограничения для аватарки:
 
-- поддерживаются: `JPEG`, `PNG`, `WEBP`, `GIF`
+- поддерживаются: `JPEG`, `PNG`, `WEBP`, `GIF`, `HEIC`, `HEIF`
 - максимальный размер: `5MB`
 - после загрузки backend сохраняет файл в `uploads/avatars` и возвращает путь в `avatar_url`
 

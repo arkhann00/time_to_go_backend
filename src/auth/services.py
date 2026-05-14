@@ -14,7 +14,12 @@ ALLOWED_AVATAR_CONTENT_TYPES = {
     "image/png": ".png",
     "image/webp": ".webp",
     "image/gif": ".gif",
+    "image/heic": ".heic",
+    "image/heif": ".heif",
+    "image/heic-sequence": ".heic",
+    "image/heif-sequence": ".heif",
 }
+ALLOWED_AVATAR_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".heic", ".heif"}
 MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024
 AVATARS_DIR = Path("uploads/avatars")
 
@@ -49,11 +54,16 @@ async def update_user_profile(user: User, data: UserUpdate, db: AsyncSession) ->
 
 
 async def save_user_avatar(user: User, avatar: UploadFile, db: AsyncSession) -> User:
-    extension = ALLOWED_AVATAR_CONTENT_TYPES.get(avatar.content_type or "")
+    extension = ALLOWED_AVATAR_CONTENT_TYPES.get((avatar.content_type or "").lower())
+    if extension is None and avatar.filename:
+        suffix = Path(avatar.filename).suffix.lower()
+        if suffix in ALLOWED_AVATAR_EXTENSIONS:
+            extension = ".jpg" if suffix == ".jpeg" else suffix
+
     if extension is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Допустимы только JPEG, PNG, WEBP или GIF.",
+            detail="Допустимы JPEG, PNG, WEBP, GIF, HEIC или HEIF.",
         )
 
     file_bytes = await avatar.read()
