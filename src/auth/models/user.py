@@ -9,6 +9,7 @@ from src.db.base import Base
 if TYPE_CHECKING:
     from src.believers.models.believer import Believer
     from src.believers.models.method import EvangelismMethod
+    from src.outreach.models.outreach_statistics import OutreachStatistics
 
 
 class User(Base):
@@ -29,4 +30,7 @@ class User(Base):
     )
     methods: Mapped[list["EvangelismMethod"]] = relationship(
         back_populates="owner", cascade="all, delete-orphan"
+    )
+    outreach_statistics: Mapped["OutreachStatistics | None"] = relationship(
+        back_populates="owner", uselist=False, cascade="all, delete-orphan"
     )
