@@ -19,15 +19,15 @@ depends_on = None
 def upgrade() -> None:
     op.drop_index("ix_outreach_statistics_user_id", table_name="outreach_statistics")
 
+    # SQLite does not allow ADD COLUMN with a non-constant default (functions like date('now')).
+    # Workaround: add nullable, backfill existing rows with a literal, then recreate NOT NULL.
     op.add_column(
         "outreach_statistics",
-        sa.Column(
-            "outreach_date",
-            sa.Date(),
-            nullable=False,
-            server_default=sa.text("(date('now'))"),
-        ),
+        sa.Column("outreach_date", sa.Date(), nullable=True),
     )
+    op.execute("UPDATE outreach_statistics SET outreach_date = '2026-01-01' WHERE outreach_date IS NULL")
+    with op.batch_alter_table("outreach_statistics") as batch_op:
+        batch_op.alter_column("outreach_date", nullable=False)
 
     op.create_index(
         "ix_outreach_statistics_user_id",
