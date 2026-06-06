@@ -17,32 +17,24 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.drop_index("ix_outreach_statistics_user_id", table_name="outreach_statistics")
+    # DROP INDEX IF EXISTS handles both fresh DBs and DBs where the index was created differently.
+    op.execute("DROP INDEX IF EXISTS ix_outreach_statistics_user_id")
 
-    # SQLite does not allow ADD COLUMN with a non-constant default (functions like date('now')).
-    # Workaround: add nullable, backfill existing rows with a literal, then recreate NOT NULL.
-    op.add_column(
-        "outreach_statistics",
-        sa.Column("outreach_date", sa.Date(), nullable=True),
-    )
+    # batch_alter_table recreates the table from scratch (required for SQLite DDL changes).
+    # Add outreach_date as nullable first; backfill before enforcing NOT NULL.
+    with op.batch_alter_table("outreach_statistics", recreate="always") as batch_op:
+        batch_op.add_column(sa.Column("outreach_date", sa.Date(), nullable=True))
+        batch_op.create_index("ix_outreach_statistics_user_id", ["user_id"], unique=False)
+
     op.execute("UPDATE outreach_statistics SET outreach_date = '2026-01-01' WHERE outreach_date IS NULL")
+
     with op.batch_alter_table("outreach_statistics") as batch_op:
         batch_op.alter_column("outreach_date", nullable=False)
 
-    op.create_index(
-        "ix_outreach_statistics_user_id",
-        "outreach_statistics",
-        ["user_id"],
-        unique=False,
-    )
-
 
 def downgrade() -> None:
-    op.drop_index("ix_outreach_statistics_user_id", table_name="outreach_statistics")
-    op.drop_column("outreach_statistics", "outreach_date")
-    op.create_index(
-        "ix_outreach_statistics_user_id",
-        "outreach_statistics",
-        ["user_id"],
-        unique=True,
-    )
+    op.execute("DROP INDEX IF EXISTS ix_outreach_statistics_user_id")
+
+    with op.batch_alter_table("outreach_statistics", recreate="always") as batch_op:
+        batch_op.drop_column("outreach_date")
+        batch_op.create_index("ix_outreach_statistics_user_id", ["user_id"], unique=True)
