@@ -17,29 +17,15 @@ from src.outreach.schema.outreach_statistics import (
 router = APIRouter(prefix="/outreach-statistics", tags=["Outreach statistics"])
 
 
-async def _get_user_statistics(
-    db: AsyncSession, user_id: int
-) -> OutreachStatistics | None:
-    return await db.scalar(
-        select(OutreachStatistics).where(OutreachStatistics.user_id == user_id)
-    )
-
-
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_outreach_statistics(
     payload: OutreachStatisticsCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> OutreachStatisticsResponse:
-    existing = await _get_user_statistics(db, current_user.id)
-    if existing:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Статистика аутрича для этого пользователя уже существует.",
-        )
-
     statistics = OutreachStatistics(
         user_id=current_user.id,
+        outreach_date=payload.outreach_date,
         gospels_told=payload.gospels_told,
         salvation_prayed_unreachable=payload.salvation_prayed_unreachable,
         scriptures_distributed=payload.scriptures_distributed,
@@ -55,29 +41,29 @@ async def create_outreach_statistics(
 async def get_my_outreach_statistics(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> OutreachStatisticsResponse:
-    statistics = await _get_user_statistics(db, current_user.id)
-    if not statistics:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Статистика аутрича не найдена.",
-        )
-    return OutreachStatisticsResponse.model_validate(statistics)
+) -> list[OutreachStatisticsResponse]:
+    result = await db.scalars(
+        select(OutreachStatistics)
+        .where(OutreachStatistics.user_id == current_user.id)
+        .order_by(OutreachStatistics.outreach_date.desc())
+    )
+    return [OutreachStatisticsResponse.model_validate(item) for item in result]
 
 
 @router.get("/all")
 async def list_all_outreach_statistics(
     db: AsyncSession = Depends(get_db),
 ) -> list[OutreachStatisticsWithUserResponse]:
-    statistics = await db.scalars(
+    result = await db.scalars(
         select(OutreachStatistics)
         .options(selectinload(OutreachStatistics.owner))
-        .order_by(OutreachStatistics.updated_at.desc())
+        .order_by(OutreachStatistics.outreach_date.desc())
     )
     return [
         OutreachStatisticsWithUserResponse(
             id=item.id,
             user_id=item.user_id,
+            outreach_date=item.outreach_date,
             gospels_told=item.gospels_told,
             salvation_prayed_unreachable=item.salvation_prayed_unreachable,
             scriptures_distributed=item.scriptures_distributed,
@@ -86,7 +72,7 @@ async def list_all_outreach_statistics(
             updated_at=item.updated_at,
             user=item.owner,
         )
-        for item in statistics
+        for item in result
     ]
 
 
@@ -110,28 +96,6 @@ async def get_outreach_statistics(
     return OutreachStatisticsResponse.model_validate(statistics)
 
 
-@router.patch("/me")
-async def update_my_outreach_statistics(
-    payload: OutreachStatisticsUpdate,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-) -> OutreachStatisticsResponse:
-    statistics = await _get_user_statistics(db, current_user.id)
-    if not statistics:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Статистика аутрича не найдена.",
-        )
-
-    updates = payload.model_dump(exclude_unset=True)
-    for field, value in updates.items():
-        setattr(statistics, field, value)
-
-    await db.commit()
-    await db.refresh(statistics)
-    return OutreachStatisticsResponse.model_validate(statistics)
-
-
 @router.patch("/{statistics_id}")
 async def update_outreach_statistics(
     statistics_id: int,
@@ -151,29 +115,12 @@ async def update_outreach_statistics(
             detail="Статистика аутрича не найдена.",
         )
 
-    updates = payload.model_dump(exclude_unset=True)
-    for field, value in updates.items():
+    for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(statistics, field, value)
 
     await db.commit()
     await db.refresh(statistics)
     return OutreachStatisticsResponse.model_validate(statistics)
-
-
-@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_my_outreach_statistics(
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-) -> None:
-    statistics = await _get_user_statistics(db, current_user.id)
-    if not statistics:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Статистика аутрича не найдена.",
-        )
-
-    await db.delete(statistics)
-    await db.commit()
 
 
 @router.delete("/{statistics_id}", status_code=status.HTTP_204_NO_CONTENT)

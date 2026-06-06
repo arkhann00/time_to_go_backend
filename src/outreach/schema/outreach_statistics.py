@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -6,6 +6,7 @@ from src.auth.schema.user import UserResponse
 
 
 class OutreachStatisticsBase(BaseModel):
+    outreach_date: date
     gospels_told: int = Field(default=0, ge=0)
     salvation_prayed_unreachable: int = Field(default=0, ge=0)
     scriptures_distributed: int = Field(default=0, ge=0)
@@ -17,6 +18,7 @@ class OutreachStatisticsCreate(OutreachStatisticsBase):
 
 
 class OutreachStatisticsUpdate(BaseModel):
+    outreach_date: date | None = None
     gospels_told: int | None = Field(default=None, ge=0)
     salvation_prayed_unreachable: int | None = Field(default=None, ge=0)
     scriptures_distributed: int | None = Field(default=None, ge=0)
