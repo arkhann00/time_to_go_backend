@@ -12,6 +12,7 @@ from src.believers.schema.believer import (
     BelieverCreate,
     BelieverResponse,
     BelieverUpdate,
+    BelieverWithOwnerResponse,
 )
 from src.believers.services import get_available_method
 from src.db.session import get_db
@@ -88,20 +89,20 @@ async def list_my_believers(
 @router.get("/all")
 async def list_all_believers(
     db: AsyncSession = Depends(get_db),
-) -> list[BelieverResponse]:
+) -> list[BelieverWithOwnerResponse]:
     believers = await db.scalars(
         select(Believer)
         .order_by(Believer.met_at.desc())
-        .options(selectinload(Believer.method))
+        .options(selectinload(Believer.method), selectinload(Believer.owner))
     )
-    return [BelieverResponse.model_validate(item) for item in believers]
+    return [BelieverWithOwnerResponse.model_validate(item) for item in believers]
 
 
 @router.get("/testimony-of-day")
 async def testimony_of_day(
     day: date | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
-) -> BelieverResponse:
+) -> BelieverWithOwnerResponse:
     target_day = day or date.today()
 
     testimony_filter = (Believer.testimony.is_not(None), Believer.testimony != "")
@@ -121,9 +122,9 @@ async def testimony_of_day(
         .order_by(Believer.id)
         .offset(day_index)
         .limit(1)
-        .options(selectinload(Believer.method))
+        .options(selectinload(Believer.method), selectinload(Believer.owner))
     )
-    return BelieverResponse.model_validate(believer)
+    return BelieverWithOwnerResponse.model_validate(believer)
 
 
 @router.get("/stats/accepted-jesus-count")
@@ -141,8 +142,8 @@ async def latest_believers(
     date_from: date | None = Query(default=None),
     date_to: date | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
-) -> list[BelieverResponse]:
-    stmt = select(Believer).options(selectinload(Believer.method))
+) -> list[BelieverWithOwnerResponse]:
+    stmt = select(Believer).options(selectinload(Believer.method), selectinload(Believer.owner))
 
     if date_from is not None:
         stmt = stmt.where(Believer.met_at >= date_from)
@@ -150,7 +151,7 @@ async def latest_believers(
         stmt = stmt.where(Believer.met_at <= date_to)
 
     believers = await db.scalars(stmt.order_by(Believer.met_at.desc()).limit(20))
-    return [BelieverResponse.model_validate(item) for item in believers]
+    return [BelieverWithOwnerResponse.model_validate(item) for item in believers]
 
 
 @router.get("/{believer_id}")

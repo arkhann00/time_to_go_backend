@@ -6,6 +6,14 @@ from src.believers.models.believer import ChristianStage
 from src.believers.schema.method import MethodResponse
 
 
+class BelieverOwner(BaseModel):
+    id: int
+    name: str
+    avatar_url: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class BelieverBase(BaseModel):
     name: str
     telegram: str | None = None
@@ -62,4 +70,8 @@ class BelieverResponse(BaseModel):
     method: MethodResponse
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class BelieverWithOwnerResponse(BelieverResponse):
+    owner: BelieverOwner
 
