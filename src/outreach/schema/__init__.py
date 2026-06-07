@@ -1,12 +1,12 @@
 from src.outreach.schema.outreach_statistics import (
-    OutreachStatisticsCreate,
+    OutreachStatisticsAdd,
     OutreachStatisticsResponse,
     OutreachStatisticsUpdate,
     OutreachStatisticsWithUserResponse,
 )
 
 __all__ = [
-    "OutreachStatisticsCreate",
+    "OutreachStatisticsAdd",
     "OutreachStatisticsResponse",
     "OutreachStatisticsUpdate",
     "OutreachStatisticsWithUserResponse",

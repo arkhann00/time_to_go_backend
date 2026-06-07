@@ -1,7 +1,7 @@
-from datetime import date, datetime
+from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, func
+from sqlalchemy import DateTime, ForeignKey, Integer, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.db.base import Base
@@ -12,12 +12,12 @@ if TYPE_CHECKING:
 
 class OutreachStatistics(Base):
     __tablename__ = "outreach_statistics"
+    __table_args__ = (UniqueConstraint("user_id", name="uq_outreach_statistics_user_id"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), index=True
     )
-    outreach_date: Mapped[date] = mapped_column(Date)
     gospels_told: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     salvation_prayed_unreachable: Mapped[int] = mapped_column(
         Integer, default=0, server_default="0"

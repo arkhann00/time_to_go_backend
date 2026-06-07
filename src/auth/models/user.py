@@ -31,6 +31,6 @@ class User(Base):
     methods: Mapped[list["EvangelismMethod"]] = relationship(
         back_populates="owner", cascade="all, delete-orphan"
     )
-    outreach_statistics: Mapped[list["OutreachStatistics"]] = relationship(
-        back_populates="owner", cascade="all, delete-orphan"
+    outreach_statistics: Mapped["OutreachStatistics | None"] = relationship(
+        back_populates="owner", cascade="all, delete-orphan", uselist=False
     )
