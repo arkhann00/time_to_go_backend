@@ -20,10 +20,12 @@ services:
     container_name: caddy
     ports:
       - "80:80"
+      - "127.0.0.1:2015:2015"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
       - caddy_config:/config
+      - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
       - api
     networks:

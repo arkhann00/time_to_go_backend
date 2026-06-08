@@ -1,3 +1,8 @@
 :80 {
     reverse_proxy api:8000
 }
+
+:2015 {
+    tls /etc/letsencrypt/live/api.time.to.go.xn--80a6ad.space/fullchain.pem /etc/letsencrypt/live/api.time.to.go.xn--80a6ad.space/privkey.pem
+    reverse_proxy api:8000
+}
