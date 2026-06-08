@@ -26,6 +26,9 @@ class OutreachStatistics(Base):
     scriptures_distributed: Mapped[int] = mapped_column(
         Integer, default=0, server_default="0"
     )
+    fathers_letters_distributed: Mapped[int] = mapped_column(
+        Integer, default=0, server_default="0"
+    )
     healings_deliverances: Mapped[int] = mapped_column(
         Integer, default=0, server_default="0"
     )

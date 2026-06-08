@@ -66,22 +66,37 @@ async def get_summary_statistics(
         )
     ) or 0
 
+    believers_saved = await db.scalar(
+        select(func.count(Believer.id)).where(
+            *user_filter_believers,
+            Believer.stage != "interested",
+        )
+    ) or 0
+
     stats_row = await db.execute(
         select(
             func.coalesce(func.sum(OutreachStatistics.gospels_told), 0),
+            func.coalesce(func.sum(OutreachStatistics.salvation_prayed_unreachable), 0),
             func.coalesce(func.sum(OutreachStatistics.scriptures_distributed), 0),
+            func.coalesce(func.sum(OutreachStatistics.fathers_letters_distributed), 0),
             func.coalesce(func.sum(OutreachStatistics.healings_deliverances), 0),
         ).where(*user_filter_stats)
     )
-    gospels_told_sum, scriptures_distributed_sum, healings_deliverances_sum = (
-        stats_row.one()
-    )
+    (
+        gospels_told_sum,
+        salvation_prayed_sum,
+        scriptures_distributed_sum,
+        fathers_letters_sum,
+        healings_deliverances_sum,
+    ) = stats_row.one()
 
     return SummaryStatisticsResponse(
         total_heard_gospel=believers_count + gospels_told_sum,
+        total_saved=believers_saved + salvation_prayed_sum,
         heard_gospel_no_contact=gospels_told_sum + believers_no_contact,
         heard_gospel_has_contact=believers_with_contact,
         scriptures_distributed=scriptures_distributed_sum,
+        fathers_letters_distributed=fathers_letters_sum,
         healings_deliverances=healings_deliverances_sum,
     )
 
@@ -119,6 +134,7 @@ async def add_outreach_statistics(
     statistics.gospels_told += payload.gospels_told
     statistics.salvation_prayed_unreachable += payload.salvation_prayed_unreachable
     statistics.scriptures_distributed += payload.scriptures_distributed
+    statistics.fathers_letters_distributed += payload.fathers_letters_distributed
     statistics.healings_deliverances += payload.healings_deliverances
     if payload.testimony is not None:
         db.add(Testimony(outreach_statistics_id=statistics.id, text=payload.testimony))
@@ -165,6 +181,7 @@ async def reset_outreach_statistics(
     statistics.gospels_told = 0
     statistics.salvation_prayed_unreachable = 0
     statistics.scriptures_distributed = 0
+    statistics.fathers_letters_distributed = 0
     statistics.healings_deliverances = 0
     await db.commit()
     await db.refresh(statistics)
@@ -188,6 +205,7 @@ async def list_all_outreach_statistics(
             gospels_told=item.gospels_told,
             salvation_prayed_unreachable=item.salvation_prayed_unreachable,
             scriptures_distributed=item.scriptures_distributed,
+            fathers_letters_distributed=item.fathers_letters_distributed,
             healings_deliverances=item.healings_deliverances,
             testimonies=item.testimonies,
             created_at=item.created_at,
