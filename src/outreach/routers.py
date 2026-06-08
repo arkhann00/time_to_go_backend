@@ -58,14 +58,6 @@ async def get_summary_statistics(
         )
     ) or 0
 
-    believers_no_contact = await db.scalar(
-        select(func.count(Believer.id)).where(
-            *user_filter_believers,
-            Believer.telegram.is_(None),
-            Believer.phone_number.is_(None),
-        )
-    ) or 0
-
     believers_saved = await db.scalar(
         select(func.count(Believer.id)).where(
             *user_filter_believers,
@@ -93,8 +85,7 @@ async def get_summary_statistics(
     return SummaryStatisticsResponse(
         total_heard_gospel=believers_count + gospels_told_sum,
         total_saved=believers_saved + salvation_prayed_sum,
-        heard_gospel_no_contact=gospels_told_sum + believers_no_contact,
-        heard_gospel_has_contact=believers_with_contact,
+        contacts_taken=believers_with_contact,
         scriptures_distributed=scriptures_distributed_sum,
         fathers_letters_distributed=fathers_letters_sum,
         healings_deliverances=healings_deliverances_sum,

@@ -14,8 +14,7 @@ class StatisticsType(str, Enum):
 class SummaryStatisticsResponse(BaseModel):
     total_heard_gospel: int
     total_saved: int
-    heard_gospel_no_contact: int
-    heard_gospel_has_contact: int
+    contacts_taken: int
     scriptures_distributed: int
     fathers_letters_distributed: int
     healings_deliverances: int

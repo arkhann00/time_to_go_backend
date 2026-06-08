@@ -77,6 +77,15 @@ async def update_me(
     return UserResponse.model_validate(updated_user)
 
 
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_me(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    await db.delete(current_user)
+    await db.commit()
+
+
 @router.post("/me/avatar")
 async def upload_my_avatar(
     avatar: UploadFile = File(...),
