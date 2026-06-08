@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -170,6 +170,7 @@ async def list_all_outreach_statistics(
             salvation_prayed_unreachable=item.salvation_prayed_unreachable,
             scriptures_distributed=item.scriptures_distributed,
             healings_deliverances=item.healings_deliverances,
+            testimony=item.testimony,
             created_at=item.created_at,
             updated_at=item.updated_at,
             user=item.owner,
