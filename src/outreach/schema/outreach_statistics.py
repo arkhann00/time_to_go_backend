@@ -32,6 +32,14 @@ class OutreachStatisticsUpdate(BaseModel):
     salvation_prayed_unreachable: int | None = Field(default=None, ge=0)
     scriptures_distributed: int | None = Field(default=None, ge=0)
     healings_deliverances: int | None = Field(default=None, ge=0)
+    delete_testimony_id: int | None = None
+
+
+class TestimonyResponse(BaseModel):
+    id: int
+    text: str
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class OutreachStatisticsResponse(BaseModel):
@@ -41,18 +49,11 @@ class OutreachStatisticsResponse(BaseModel):
     salvation_prayed_unreachable: int
     scriptures_distributed: int
     healings_deliverances: int
-    testimonies: list[str] = []
+    testimonies: list[TestimonyResponse] = []
     created_at: datetime
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
-
-    @field_validator("testimonies", mode="before")
-    @classmethod
-    def extract_testimony_texts(cls, v):
-        if v and hasattr(v[0], "text"):
-            return [t.text for t in v]
-        return v
 
 
 class OutreachStatisticsWithUserResponse(OutreachStatisticsResponse):

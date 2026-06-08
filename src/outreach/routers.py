@@ -134,8 +134,23 @@ async def update_outreach_statistics(
     current_user: User = Depends(get_current_user),
 ) -> OutreachStatisticsResponse:
     statistics = await _get_or_create_statistics(current_user.id, db)
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    update_data = payload.model_dump(exclude_unset=True)
+    delete_testimony_id = update_data.pop("delete_testimony_id", None)
+    for field, value in update_data.items():
         setattr(statistics, field, value)
+    if delete_testimony_id is not None:
+        testimony = await db.scalar(
+            select(Testimony).where(
+                Testimony.id == delete_testimony_id,
+                Testimony.outreach_statistics_id == statistics.id,
+            )
+        )
+        if testimony is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Свидетельство не найдено.",
+            )
+        await db.delete(testimony)
     await db.commit()
     await db.refresh(statistics)
     return OutreachStatisticsResponse.model_validate(statistics)
@@ -174,7 +189,7 @@ async def list_all_outreach_statistics(
             salvation_prayed_unreachable=item.salvation_prayed_unreachable,
             scriptures_distributed=item.scriptures_distributed,
             healings_deliverances=item.healings_deliverances,
-            testimonies=[t.text for t in item.testimonies],
+            testimonies=item.testimonies,
             created_at=item.created_at,
             updated_at=item.updated_at,
             user=item.owner,
