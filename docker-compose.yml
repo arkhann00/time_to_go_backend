@@ -2,15 +2,39 @@ services:
   api:
     build: .
     container_name: time_to_go_backend
-    ports:
-      - "8000:8000"
     environment:
       SECRET_KEY: change-me-in-production
     volumes:
       - ./data:/app/data
+      - ./uploads:/app/uploads
     command: >
       sh -c "mkdir -p /app/data &&
              export DATABASE_URL=sqlite+aiosqlite:///./data/app.db &&
              uv run alembic upgrade head &&
              uv run uvicorn src.main:app --host 0.0.0.0 --port 8000"
+    networks:
+      - web
 
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+    networks:
+      - web
+
+networks:
+  web:
+    driver: bridge
+
+volumes:
+  caddy_data:
+  caddy_config:

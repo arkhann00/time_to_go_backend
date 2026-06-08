@@ -13,23 +13,24 @@ uv run alembic upgrade head
 uv run uvicorn src.main:app --reload
 ```
 
-## Запуск в Docker
+## Запуск в Docker (production, HTTPS)
+
+Перед запуском убедитесь, что:
+- DNS-запись `api.time.to.go.xn--80a6ad.space` указывает на IP сервера
+- Порты `80` и `443` открыты на сервере
 
 ```bash
-# 1) собрать образ
-docker build -t time_to_go_backend .
-
-# 2) запустить контейнер
-docker run --rm -p 8000:8000 time_to_go_backend
+docker compose up --build -d
 ```
 
-или через docker compose:
+Caddy автоматически получит TLS-сертификат от Let's Encrypt.
 
-```bash
-docker compose up --build
+```text
+API:     https://api.time.to.go.xn--80a6ad.space
+Swagger: https://api.time.to.go.xn--80a6ad.space/docs
 ```
 
-## После запуска
+## После локального запуска
 
 ```text
 API: http://127.0.0.1:8000
