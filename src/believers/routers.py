@@ -104,41 +104,47 @@ async def list_all_believers(
 
 
 async def _build_testimony_pool(db: AsyncSession) -> list[TestimonyResponse]:
-    """Return all testimonies from believers and outreach statistics, sorted stably."""
+    """Return all testimonies newest-first across believers and outreach statistics."""
     believers = await db.scalars(
         select(Believer)
         .where(Believer.testimony.is_not(None), Believer.testimony != "")
-        .order_by(Believer.id)
         .options(selectinload(Believer.owner))
     )
     outreach_testimonies = await db.scalars(
-        select(Testimony)
-        .order_by(Testimony.outreach_statistics_id, Testimony.id)
-        .options(
+        select(Testimony).options(
             selectinload(Testimony.statistics).selectinload(OutreachStatistics.owner)
         )
     )
 
-    pool: list[TestimonyResponse] = []
+    # Pair each item with its creation timestamp so we can sort the combined pool
+    dated: list[tuple] = []
     for b in believers:
-        pool.append(
-            TestimonyResponse(
-                source=TestimonySource.believer,
-                testimony=b.testimony,
-                owner=BelieverOwner.model_validate(b.owner),
-                believer_name=b.name,
-                met_at=b.met_at,
+        dated.append(
+            (
+                b.created_at,
+                TestimonyResponse(
+                    source=TestimonySource.believer,
+                    testimony=b.testimony,
+                    owner=BelieverOwner.model_validate(b.owner),
+                    believer_name=b.name,
+                    met_at=b.met_at,
+                ),
             )
         )
     for t in outreach_testimonies:
-        pool.append(
-            TestimonyResponse(
-                source=TestimonySource.outreach,
-                testimony=t.text,
-                owner=BelieverOwner.model_validate(t.statistics.owner),
+        dated.append(
+            (
+                t.created_at,
+                TestimonyResponse(
+                    source=TestimonySource.outreach,
+                    testimony=t.text,
+                    owner=BelieverOwner.model_validate(t.statistics.owner),
+                ),
             )
         )
-    return pool
+
+    dated.sort(key=lambda x: x[0], reverse=True)
+    return [item for _, item in dated]
 
 
 @router.get("/testimony-of-day")
