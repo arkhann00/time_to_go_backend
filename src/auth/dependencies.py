@@ -8,6 +8,7 @@ from src.auth.security import decode_token
 from src.db.session import get_db
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 
 
 async def get_current_user(
@@ -28,4 +29,16 @@ async def get_current_user(
             detail="Пользователь не найден.",
         )
     return user
+
+
+async def get_optional_user(
+    token: str | None = Depends(oauth2_scheme_optional),
+    db: AsyncSession = Depends(get_db),
+) -> User | None:
+    if not token:
+        return None
+    subject = decode_token(token)
+    if not subject:
+        return None
+    return await db.scalar(select(User).where(User.id == int(subject)))
 

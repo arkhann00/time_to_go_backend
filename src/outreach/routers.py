@@ -3,7 +3,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.auth.dependencies import get_current_user
+from src.auth.dependencies import get_current_user, get_optional_user
 from src.auth.models.user import User
 from src.believers.models.believer import Believer
 from src.db.session import get_db
@@ -24,8 +24,14 @@ router = APIRouter(prefix="/outreach-statistics", tags=["Outreach statistics"])
 async def get_summary_statistics(
     type: StatisticsType = Query(default=StatisticsType.general),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User | None = Depends(get_optional_user),
 ) -> SummaryStatisticsResponse:
+    if type == StatisticsType.personal and current_user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Авторизация обязательна для личной статистики.",
+        )
+
     user_filter_believers = (
         [Believer.user_id == current_user.id]
         if type == StatisticsType.personal

@@ -50,6 +50,11 @@ Swagger: http://127.0.0.1:8000/docs
 - максимальный размер: `5MB`
 - после загрузки backend сохраняет файл в `uploads/avatars` и возвращает путь в `avatar_url`
 
+Получение фото:
+
+- `GET /uploads/{path}` — публичный эндпоинт, авторизация не нужна
+- полный URL аватарки: `http://127.0.0.1:8000` + `avatar_url` (например: `http://127.0.0.1:8000/uploads/avatars/user_1_abc123.jpg`)
+
 Ручки по новообращённым:
 - `GET /believers/my` — только свои
 - `GET /believers/all` — все новообращённые
