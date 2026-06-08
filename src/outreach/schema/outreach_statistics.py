@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import Enum
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from src.auth.schema.user import UserResponse
 
@@ -32,7 +32,6 @@ class OutreachStatisticsUpdate(BaseModel):
     salvation_prayed_unreachable: int | None = Field(default=None, ge=0)
     scriptures_distributed: int | None = Field(default=None, ge=0)
     healings_deliverances: int | None = Field(default=None, ge=0)
-    testimony: str | None = None
 
 
 class OutreachStatisticsResponse(BaseModel):
@@ -42,11 +41,18 @@ class OutreachStatisticsResponse(BaseModel):
     salvation_prayed_unreachable: int
     scriptures_distributed: int
     healings_deliverances: int
-    testimony: str | None
+    testimonies: list[str] = []
     created_at: datetime
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("testimonies", mode="before")
+    @classmethod
+    def extract_testimony_texts(cls, v):
+        if v and hasattr(v[0], "text"):
+            return [t.text for t in v]
+        return v
 
 
 class OutreachStatisticsWithUserResponse(OutreachStatisticsResponse):

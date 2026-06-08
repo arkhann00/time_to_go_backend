@@ -8,6 +8,7 @@ from src.auth.models.user import User
 from src.believers.models.believer import Believer
 from src.db.session import get_db
 from src.outreach.models.outreach_statistics import OutreachStatistics
+from src.outreach.models.testimony import Testimony
 from src.outreach.schema.outreach_statistics import (
     OutreachStatisticsAdd,
     OutreachStatisticsResponse,
@@ -120,7 +121,7 @@ async def add_outreach_statistics(
     statistics.scriptures_distributed += payload.scriptures_distributed
     statistics.healings_deliverances += payload.healings_deliverances
     if payload.testimony is not None:
-        statistics.testimony = payload.testimony
+        db.add(Testimony(outreach_statistics_id=statistics.id, text=payload.testimony))
     await db.commit()
     await db.refresh(statistics)
     return OutreachStatisticsResponse.model_validate(statistics)
@@ -160,7 +161,10 @@ async def list_all_outreach_statistics(
     db: AsyncSession = Depends(get_db),
 ) -> list[OutreachStatisticsWithUserResponse]:
     result = await db.scalars(
-        select(OutreachStatistics).options(selectinload(OutreachStatistics.owner))
+        select(OutreachStatistics).options(
+            selectinload(OutreachStatistics.owner),
+            selectinload(OutreachStatistics.testimonies),
+        )
     )
     return [
         OutreachStatisticsWithUserResponse(
@@ -170,7 +174,7 @@ async def list_all_outreach_statistics(
             salvation_prayed_unreachable=item.salvation_prayed_unreachable,
             scriptures_distributed=item.scriptures_distributed,
             healings_deliverances=item.healings_deliverances,
-            testimony=item.testimony,
+            testimonies=[t.text for t in item.testimonies],
             created_at=item.created_at,
             updated_at=item.updated_at,
             user=item.owner,
