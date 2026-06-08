@@ -1,4 +1,5 @@
 from datetime import date
+from enum import Enum
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
@@ -74,4 +75,17 @@ class BelieverResponse(BaseModel):
 
 class BelieverWithOwnerResponse(BelieverResponse):
     owner: BelieverOwner
+
+
+class TestimonySource(str, Enum):
+    believer = "believer"
+    outreach = "outreach"
+
+
+class TestimonyResponse(BaseModel):
+    source: TestimonySource
+    testimony: str
+    owner: BelieverOwner
+    believer_name: str | None = None
+    met_at: date | None = None
 

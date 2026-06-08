@@ -24,6 +24,7 @@ class OutreachStatisticsAdd(BaseModel):
     salvation_prayed_unreachable: int = Field(default=0, ge=0)
     scriptures_distributed: int = Field(default=0, ge=0)
     healings_deliverances: int = Field(default=0, ge=0)
+    testimony: str | None = None
 
 
 class OutreachStatisticsUpdate(BaseModel):
@@ -31,6 +32,7 @@ class OutreachStatisticsUpdate(BaseModel):
     salvation_prayed_unreachable: int | None = Field(default=None, ge=0)
     scriptures_distributed: int | None = Field(default=None, ge=0)
     healings_deliverances: int | None = Field(default=None, ge=0)
+    testimony: str | None = None
 
 
 class OutreachStatisticsResponse(BaseModel):
@@ -40,6 +42,7 @@ class OutreachStatisticsResponse(BaseModel):
     salvation_prayed_unreachable: int
     scriptures_distributed: int
     healings_deliverances: int
+    testimony: str | None
     created_at: datetime
     updated_at: datetime
 

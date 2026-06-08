@@ -119,6 +119,8 @@ async def add_outreach_statistics(
     statistics.salvation_prayed_unreachable += payload.salvation_prayed_unreachable
     statistics.scriptures_distributed += payload.scriptures_distributed
     statistics.healings_deliverances += payload.healings_deliverances
+    if payload.testimony is not None:
+        statistics.testimony = payload.testimony
     await db.commit()
     await db.refresh(statistics)
     return OutreachStatisticsResponse.model_validate(statistics)

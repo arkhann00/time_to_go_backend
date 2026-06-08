@@ -10,12 +10,16 @@ from src.auth.models.user import User
 from src.believers.models.believer import Believer, ChristianStage
 from src.believers.schema.believer import (
     BelieverCreate,
+    BelieverOwner,
     BelieverResponse,
     BelieverUpdate,
     BelieverWithOwnerResponse,
+    TestimonyResponse,
+    TestimonySource,
 )
 from src.believers.services import get_available_method
 from src.db.session import get_db
+from src.outreach.models.outreach_statistics import OutreachStatistics
 
 router = APIRouter(prefix="/believers", tags=["Believers"])
 
@@ -98,33 +102,68 @@ async def list_all_believers(
     return [BelieverWithOwnerResponse.model_validate(item) for item in believers]
 
 
+async def _build_testimony_pool(db: AsyncSession) -> list[TestimonyResponse]:
+    """Return all testimonies from believers and outreach statistics, sorted stably."""
+    testimony_filter = (Believer.testimony.is_not(None), Believer.testimony != "")
+    believers = await db.scalars(
+        select(Believer)
+        .where(*testimony_filter)
+        .order_by(Believer.id)
+        .options(selectinload(Believer.owner))
+    )
+    outreach_filter = (
+        OutreachStatistics.testimony.is_not(None),
+        OutreachStatistics.testimony != "",
+    )
+    outreach_rows = await db.scalars(
+        select(OutreachStatistics)
+        .where(*outreach_filter)
+        .order_by(OutreachStatistics.id)
+        .options(selectinload(OutreachStatistics.owner))
+    )
+
+    pool: list[TestimonyResponse] = []
+    for b in believers:
+        pool.append(
+            TestimonyResponse(
+                source=TestimonySource.believer,
+                testimony=b.testimony,
+                owner=BelieverOwner.model_validate(b.owner),
+                believer_name=b.name,
+                met_at=b.met_at,
+            )
+        )
+    for o in outreach_rows:
+        pool.append(
+            TestimonyResponse(
+                source=TestimonySource.outreach,
+                testimony=o.testimony,
+                owner=BelieverOwner.model_validate(o.owner),
+            )
+        )
+    return pool
+
+
 @router.get("/testimony-of-day")
 async def testimony_of_day(
     day: date | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
-) -> BelieverWithOwnerResponse:
+) -> TestimonyResponse:
     target_day = day or date.today()
-
-    testimony_filter = (Believer.testimony.is_not(None), Believer.testimony != "")
-    total_with_testimony = await db.scalar(
-        select(func.count(Believer.id)).where(*testimony_filter)
-    )
-    if not total_with_testimony:
+    pool = await _build_testimony_pool(db)
+    if not pool:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Нет новообращенных со свидетельством.",
+            detail="Нет свидетельств.",
         )
+    return pool[target_day.toordinal() % len(pool)]
 
-    day_index = target_day.toordinal() % total_with_testimony
-    believer = await db.scalar(
-        select(Believer)
-        .where(*testimony_filter)
-        .order_by(Believer.id)
-        .offset(day_index)
-        .limit(1)
-        .options(selectinload(Believer.method), selectinload(Believer.owner))
-    )
-    return BelieverWithOwnerResponse.model_validate(believer)
+
+@router.get("/testimonies")
+async def list_testimonies(
+    db: AsyncSession = Depends(get_db),
+) -> list[TestimonyResponse]:
+    return await _build_testimony_pool(db)
 
 
 @router.get("/stats/accepted-jesus-count")
