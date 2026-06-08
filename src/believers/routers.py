@@ -20,6 +20,7 @@ from src.believers.schema.believer import (
 from src.believers.services import get_available_method
 from src.db.session import get_db
 from src.outreach.models.outreach_statistics import OutreachStatistics
+from src.outreach.models.testimony import Testimony
 
 router = APIRouter(prefix="/believers", tags=["Believers"])
 
@@ -104,22 +105,18 @@ async def list_all_believers(
 
 async def _build_testimony_pool(db: AsyncSession) -> list[TestimonyResponse]:
     """Return all testimonies from believers and outreach statistics, sorted stably."""
-    testimony_filter = (Believer.testimony.is_not(None), Believer.testimony != "")
     believers = await db.scalars(
         select(Believer)
-        .where(*testimony_filter)
+        .where(Believer.testimony.is_not(None), Believer.testimony != "")
         .order_by(Believer.id)
         .options(selectinload(Believer.owner))
     )
-    outreach_filter = (
-        OutreachStatistics.testimony.is_not(None),
-        OutreachStatistics.testimony != "",
-    )
-    outreach_rows = await db.scalars(
-        select(OutreachStatistics)
-        .where(*outreach_filter)
-        .order_by(OutreachStatistics.id)
-        .options(selectinload(OutreachStatistics.owner))
+    outreach_testimonies = await db.scalars(
+        select(Testimony)
+        .order_by(Testimony.outreach_statistics_id, Testimony.id)
+        .options(
+            selectinload(Testimony.statistics).selectinload(OutreachStatistics.owner)
+        )
     )
 
     pool: list[TestimonyResponse] = []
@@ -133,12 +130,12 @@ async def _build_testimony_pool(db: AsyncSession) -> list[TestimonyResponse]:
                 met_at=b.met_at,
             )
         )
-    for o in outreach_rows:
+    for t in outreach_testimonies:
         pool.append(
             TestimonyResponse(
                 source=TestimonySource.outreach,
-                testimony=o.testimony,
-                owner=BelieverOwner.model_validate(o.owner),
+                testimony=t.text,
+                owner=BelieverOwner.model_validate(t.statistics.owner),
             )
         )
     return pool
