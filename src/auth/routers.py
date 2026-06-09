@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+import os
+
+from fastapi import APIRouter, Depends, File, Header, HTTPException, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,6 +22,8 @@ from src.auth.services import (
     update_user_profile,
 )
 from src.db.session import get_db
+
+ADMIN_SECRET_KEY = os.getenv("ADMIN_SECRET_KEY", "")
 
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -83,6 +87,43 @@ async def delete_me(
     db: AsyncSession = Depends(get_db),
 ) -> None:
     await db.delete(current_user)
+    await db.commit()
+
+
+@router.get(
+    "/all-users",
+    summary="Список всех пользователей (Admin)",
+    description="Возвращает данные всех зарегистрированных пользователей. Требует заголовок `X-Admin-Key`.",
+    tags=["Admin"],
+)
+async def get_all_users(
+    x_admin_key: str = Header(..., alias="X-Admin-Key"),
+    db: AsyncSession = Depends(get_db),
+) -> list[UserResponse]:
+    if not ADMIN_SECRET_KEY or x_admin_key != ADMIN_SECRET_KEY:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Нет доступа.")
+    users = (await db.scalars(select(User))).all()
+    return [UserResponse.model_validate(u) for u in users]
+
+
+@router.delete(
+    "/by-email",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Удалить аккаунт по email (Admin)",
+    description="Удаляет пользователя по email. Требует заголовок `X-Admin-Key`.",
+    tags=["Admin"],
+)
+async def delete_user_by_email(
+    email: str,
+    x_admin_key: str = Header(..., alias="X-Admin-Key"),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    if not ADMIN_SECRET_KEY or x_admin_key != ADMIN_SECRET_KEY:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Нет доступа.")
+    user = await db.scalar(select(User).where(User.email == email))
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Пользователь не найден.")
+    await db.delete(user)
     await db.commit()
 
 
