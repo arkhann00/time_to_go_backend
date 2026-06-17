@@ -4,9 +4,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.auth.dependencies import get_current_user
 from src.auth.models.user import User
+from src.believers.models.believer import Believer
 from src.believers.models.method import EvangelismMethod
 from src.believers.schema.method import MethodCreate, MethodResponse
-from src.believers.services import methods_for_user_stmt
+from src.believers.services import get_method_statistic, methods_for_user_stmt
 from src.db.session import get_db
 
 router = APIRouter(prefix="/methods", tags=["Evangelism methods"])
@@ -57,3 +58,8 @@ async def create_method(
     await db.refresh(method)
     return MethodResponse.model_validate(method)
 
+
+@router.get("/statistics")
+async def fetch_method_statistic(db: AsyncSession = Depends(get_db)):
+    
+    return get_method_statistic(db=db)

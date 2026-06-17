@@ -277,4 +277,3 @@ async def delete_believer(
 
     await db.delete(believer)
     await db.commit()
-
