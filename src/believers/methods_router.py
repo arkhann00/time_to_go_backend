@@ -61,5 +61,4 @@ async def create_method(
 
 @router.get("/statistics")
 async def fetch_method_statistic(db: AsyncSession = Depends(get_db)):
-    
-    return get_method_statistic(db=db)
+    return await get_method_statistic(db=db)
