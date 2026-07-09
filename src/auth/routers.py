@@ -12,7 +12,7 @@ from src.auth.schema.user import (
     UserResponse,
     UserUpdate,
 )
-from src.auth.security import create_access_token, decode_token
+from src.auth.security import create_access_token, decode_token, hash_password
 from src.auth.services import (
     authenticate_user,
     register_user,
@@ -123,3 +123,14 @@ async def upload_my_avatar(
 ) -> UserResponse:
     updated_user = await save_user_avatar(current_user, avatar, db)
     return UserResponse.model_validate(updated_user)
+
+@router.put("me/password")
+async def change_password(
+    new_password: str,
+    current_user: User = Depends(get_current_user), 
+    db: AsyncSession = Depends(get_db),
+) -> str:
+    current_user.hashed_password = hash_password(new_password)
+    await db.commit()
+    await db.refresh(current_user)
+    return "success"
