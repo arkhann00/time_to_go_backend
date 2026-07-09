@@ -130,7 +130,16 @@ async def change_password(
     new_password: str,
     db: AsyncSession = Depends(get_db),
 ) -> str:
-    current_user = db.scalars(select(User).where(User.email == str(email)))
+     
+    result= await db.execute(select(User).where(User.email == str(email)))
+    current_user = result.scalar_one_or_none()
+    
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="User not found"
+        )
+    
     current_user.hashed_password = hash_password(new_password)
     await db.commit()
     await db.refresh(current_user)
