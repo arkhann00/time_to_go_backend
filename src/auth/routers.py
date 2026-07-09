@@ -124,12 +124,13 @@ async def upload_my_avatar(
     updated_user = await save_user_avatar(current_user, avatar, db)
     return UserResponse.model_validate(updated_user)
 
-@router.put("me/password")
+@router.put("/me/password")
 async def change_password(
+    email: str,
     new_password: str,
-    current_user: User = Depends(get_current_user), 
     db: AsyncSession = Depends(get_db),
 ) -> str:
+    current_user = db.scalars(select(User).where(User.email == str(email)))
     current_user.hashed_password = hash_password(new_password)
     await db.commit()
     await db.refresh(current_user)
