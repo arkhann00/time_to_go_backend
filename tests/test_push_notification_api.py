@@ -93,3 +93,21 @@ async def test_test_push_notification_ignores_schedule(
     assert response.status_code == 200
     assert response.json() == {"sent_to_devices": 1}
     assert sent_tokens == ["test-fcm-token"]
+
+
+async def test_public_test_push_notification_does_not_require_auth(
+    client: AsyncClient, monkeypatch
+) -> None:
+    sent_tokens: list[str] = []
+
+    async def fake_send(device_token: str) -> None:
+        sent_tokens.append(device_token)
+
+    monkeypatch.setattr("src.auth.routers.send_believers_friday_reminder", fake_send)
+    response = await client.post(
+        "/auth/test-push-notification", json={"token": "public-fcm-token"}
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"sent": True}
+    assert sent_tokens == ["public-fcm-token"]

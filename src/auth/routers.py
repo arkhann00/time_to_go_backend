@@ -33,6 +33,7 @@ from src.auth.services import (
     update_user_profile,
 )
 from src.db.session import get_db
+from src.notifications.fcm import send_believers_friday_reminder
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -52,6 +53,21 @@ async def login(
     user = await authenticate_user(payload, db)
     token = create_access_token(sub=str(user.id))
     return TokenResponse(access_token=token)
+
+
+@router.post("/test-push-notification")
+async def send_public_test_push_notification(
+    payload: PushDeviceDelete,
+) -> dict[str, bool]:
+    """Send the standard reminder directly to the supplied FCM token."""
+    try:
+        await send_believers_friday_reminder(payload.token)
+    except Exception as error:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Не удалось отправить тестовое уведомление.",
+        ) from error
+    return {"sent": True}
 
 
 @router.get("/me")

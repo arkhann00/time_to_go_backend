@@ -115,6 +115,11 @@ Content-Type: application/json
 
 POST /auth/me/test-push-notification
 
+POST /auth/test-push-notification
+Content-Type: application/json
+
+{"token":"<FCM token>"}
+
 GET /auth/me/notification-settings
 
 PATCH /auth/me/notification-settings
@@ -131,3 +136,7 @@ Content-Type: application/json
 `POST /auth/me/test-push-notification` немедленно отправляет этот же payload на все
 активные устройства текущего пользователя — без проверки дня недели, локального
 времени или наличия новообращённых. Ответ: `{ "sent_to_devices": 1 }`.
+
+`POST /auth/test-push-notification` не требует авторизации и отправляет payload
+только на FCM token из тела запроса. Он не сохраняет token и не зависит от данных
+пользователя. Ответ: `{ "sent": true }`.
