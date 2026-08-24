@@ -54,6 +54,21 @@ class PushDeviceResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class AdminPushDeviceTokenResponse(BaseModel):
+    """Temporary response that exposes the raw FCM token for manual testing."""
+
+    id: int
+    user_id: int
+    token: str
+    platform: PushPlatform
+    timezone: str
+    enabled: bool
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class NotificationSettingsUpdate(BaseModel):
     believers_friday_reminder_enabled: bool | None = None
     believers_friday_reminder_time: time | None = None

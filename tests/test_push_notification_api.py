@@ -111,3 +111,25 @@ async def test_public_test_push_notification_does_not_require_auth(
     assert response.status_code == 200
     assert response.json() == {"sent": True}
     assert sent_tokens == ["public-fcm-token"]
+
+
+async def test_public_admin_endpoint_returns_saved_push_tokens(
+    client: AsyncClient,
+) -> None:
+    access_token = await register_and_login(client)
+    response = await client.put(
+        "/auth/me/push-device",
+        json={
+            "token": "saved-fcm-token",
+            "platform": "android",
+            "timezone": "Europe/Moscow",
+        },
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == 200
+
+    response = await client.get("/auth/admin/push-device-tokens")
+
+    assert response.status_code == 200
+    assert response.json()[0]["token"] == "saved-fcm-token"
+    assert response.json()[0]["enabled"] is True

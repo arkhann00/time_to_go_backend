@@ -3,6 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.auth.dependencies import get_current_user
+from src.auth.models.push_device import PushDevice
 from src.auth.models.user import User
 from src.auth.notification_services import (
     delete_push_device,
@@ -11,6 +12,7 @@ from src.auth.notification_services import (
     upsert_push_device,
 )
 from src.auth.schema.notifications import (
+    AdminPushDeviceTokenResponse,
     NotificationSettingsResponse,
     NotificationSettingsUpdate,
     PushDeviceDelete,
@@ -127,6 +129,19 @@ async def get_all_users(
 ) -> list[UserResponse]:
     users = (await db.scalars(select(User))).all()
     return [UserResponse.model_validate(u) for u in users]
+
+
+@router.get(
+    "/admin/push-device-tokens",
+    summary="Временный публичный список FCM tokens (небезопасно)",
+    tags=["Admin"],
+)
+async def get_all_push_device_tokens(
+    db: AsyncSession = Depends(get_db),
+) -> list[AdminPushDeviceTokenResponse]:
+    """TODO: remove this endpoint or protect it with an administrator dependency."""
+    devices = await db.scalars(select(PushDevice).order_by(PushDevice.id))
+    return [AdminPushDeviceTokenResponse.model_validate(device) for device in devices]
 
 
 @router.delete(

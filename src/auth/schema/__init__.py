@@ -1,4 +1,5 @@
 from src.auth.schema.notifications import (
+    AdminPushDeviceTokenResponse,
     NotificationSettingsResponse,
     NotificationSettingsUpdate,
     PushDeviceDelete,
@@ -7,6 +8,7 @@ from src.auth.schema.notifications import (
 )
 
 __all__ = [
+    "AdminPushDeviceTokenResponse",
     "NotificationSettingsResponse",
     "NotificationSettingsUpdate",
     "PushDeviceDelete",
