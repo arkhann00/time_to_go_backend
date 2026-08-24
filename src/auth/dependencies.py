@@ -41,4 +41,3 @@ async def get_optional_user(
     if not subject:
         return None
     return await db.scalar(select(User).where(User.id == int(subject)))
-

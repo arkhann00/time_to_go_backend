@@ -91,4 +91,3 @@ def downgrade() -> None:
     op.drop_index("ix_users_email", table_name="users")
     op.drop_table("users")
     christian_stage_enum.drop(op.get_bind(), checkfirst=True)
-

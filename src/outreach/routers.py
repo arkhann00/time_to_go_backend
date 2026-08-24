@@ -34,9 +34,7 @@ async def get_summary_statistics(
         )
 
     user_filter_believers = (
-        [Believer.user_id == current_user.id]
-        if type == StatisticsType.personal
-        else []
+        [Believer.user_id == current_user.id] if type == StatisticsType.personal else []
     )
     user_filter_stats = (
         [OutreachStatistics.user_id == current_user.id]
@@ -44,26 +42,33 @@ async def get_summary_statistics(
         else []
     )
 
-    believers_count = await db.scalar(
-        select(func.count(Believer.id)).where(*user_filter_believers)
-    ) or 0
+    believers_count = (
+        await db.scalar(select(func.count(Believer.id)).where(*user_filter_believers))
+        or 0
+    )
 
-    believers_with_contact = await db.scalar(
-        select(func.count(Believer.id)).where(
-            *user_filter_believers,
-            or_(
-                Believer.telegram.isnot(None),
-                Believer.phone_number.isnot(None),
-            ),
+    believers_with_contact = (
+        await db.scalar(
+            select(func.count(Believer.id)).where(
+                *user_filter_believers,
+                or_(
+                    Believer.telegram.isnot(None),
+                    Believer.phone_number.isnot(None),
+                ),
+            )
         )
-    ) or 0
+        or 0
+    )
 
-    believers_saved = await db.scalar(
-        select(func.count(Believer.id)).where(
-            *user_filter_believers,
-            Believer.stage != "interested",
+    believers_saved = (
+        await db.scalar(
+            select(func.count(Believer.id)).where(
+                *user_filter_believers,
+                Believer.stage != "interested",
+            )
         )
-    ) or 0
+        or 0
+    )
 
     stats_row = await db.execute(
         select(

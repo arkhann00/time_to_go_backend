@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import UTC, date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
@@ -152,7 +152,7 @@ async def testimony_of_day(
     day: date | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
 ) -> TestimonyResponse:
-    target_day = day or date.today()
+    target_day = day or datetime.now(UTC).date()
     pool = await _build_testimony_pool(db)
     if not pool:
         raise HTTPException(
@@ -174,7 +174,9 @@ async def accepted_jesus_count(
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, int]:
     total = await db.scalar(
-        select(func.count(Believer.id)).where(Believer.stage != ChristianStage.INTERESTED)
+        select(func.count(Believer.id)).where(
+            Believer.stage != ChristianStage.INTERESTED
+        )
     )
     return {"count": total or 0}
 
@@ -185,7 +187,9 @@ async def latest_believers(
     date_to: date | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
 ) -> list[BelieverWithOwnerResponse]:
-    stmt = select(Believer).options(selectinload(Believer.method), selectinload(Believer.owner))
+    stmt = select(Believer).options(
+        selectinload(Believer.method), selectinload(Believer.owner)
+    )
 
     if date_from is not None:
         stmt = stmt.where(Believer.met_at >= date_from)

@@ -22,4 +22,6 @@ class Testimony(Base):
         DateTime(timezone=True), server_default=func.now()
     )
 
-    statistics: Mapped["OutreachStatistics"] = relationship(back_populates="testimonies")
+    statistics: Mapped["OutreachStatistics"] = relationship(
+        back_populates="testimonies"
+    )

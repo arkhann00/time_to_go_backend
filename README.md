@@ -62,3 +62,72 @@ Swagger: http://127.0.0.1:8000/docs
 - `GET /believers/testimony-of-day?day=2026-05-14` — свидетельство дня (если `day` не передан, берется сегодня)
 - `GET /believers/stats/accepted-jesus-count` — общее количество людей со стадией выше `interested`
 - `GET /believers/latest?date_from=2026-05-01&date_to=2026-05-31` — последние 20 по `met_at` с фильтром по дате
+
+## Push-напоминание по пятницам
+
+Сервер раз в 15 минут проверяет активные устройства. Если в часовом поясе хотя бы
+одного устройства пользователя пятница и попадает заданное время напоминания (по
+умолчанию `18:00`), пользователь имеет хотя бы одного новообращённого и уведомление
+ещё не отправлялось в эту локальную пятницу, оно уйдёт на все его активные устройства.
+
+Для Firebase задайте **один** из вариантов только через окружение или secret storage:
+
+```bash
+# Полный JSON сервисного аккаунта Firebase в одной environment variable.
+FIREBASE_SERVICE_ACCOUNT_JSON='{"type":"service_account",...}'
+
+# Или путь к JSON-файлу, смонтированному как secret вне репозитория.
+FIREBASE_SERVICE_ACCOUNT_PATH=/run/secrets/firebase-service-account.json
+```
+
+Не добавляйте ключ сервисного аккаунта, FCM token или `.env` с секретами в Git.
+
+Планировщик запускается вместе с FastAPI. Для отдельного production-процесса (это
+предпочтительно при нескольких API-инстансах) запускайте:
+
+```bash
+uv run python -m src.notifications.scheduler
+```
+
+Журнал отправок в БД с уникальным ключом `(user_id, notification_type, local_date)`
+не допускает дубль даже при одновременной работе нескольких планировщиков. При запуске
+отдельного процесса API-планировщик следует отключить через `ENABLE_PUSH_SCHEDULER=false`.
+
+### Контракт для Flutter
+
+Все вызовы ниже требуют `Authorization: Bearer <access_token>`.
+
+```http
+PUT /auth/me/push-device
+Content-Type: application/json
+
+{"token":"<FCM token>","platform":"ios","timezone":"Europe/Moscow"}
+```
+
+`platform`: `ios` или `android`; `timezone` — валидный IANA timezone. Повторная
+регистрация того же token обновляет устройство и включает его.
+
+```http
+DELETE /auth/me/push-device
+Content-Type: application/json
+
+{"token":"<FCM token>"}
+
+POST /auth/me/test-push-notification
+
+GET /auth/me/notification-settings
+
+PATCH /auth/me/notification-settings
+Content-Type: application/json
+
+{"believers_friday_reminder_enabled":true,"believers_friday_reminder_time":"18:00"}
+```
+
+Настройки возвращают поля `believers_friday_reminder_enabled` и
+`believers_friday_reminder_time`. Тело `PATCH` частичное. Уведомление содержит
+`notification.title = "Время идти 🙌"`, `notification.body = "Напиши своим ребятам и пригласи их в церковь."`,
+а также `data.type = believers_friday_reminder` и `data.screen = believers`.
+
+`POST /auth/me/test-push-notification` немедленно отправляет этот же payload на все
+активные устройства текущего пользователя — без проверки дня недели, локального
+времени или наличия новообращённых. Ответ: `{ "sent_to_devices": 1 }`.

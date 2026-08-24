@@ -34,6 +34,7 @@ class BelieverBase(BaseModel):
             return None
         return value
 
+
 class BelieverCreate(BelieverBase):
     pass
 
@@ -56,6 +57,7 @@ class BelieverUpdate(BaseModel):
         if isinstance(value, str) and not value.strip():
             return None
         return value
+
 
 class BelieverResponse(BaseModel):
     id: int
@@ -88,4 +90,3 @@ class TestimonyResponse(BaseModel):
     owner: BelieverOwner
     believer_name: str | None = None
     met_at: date | None = None
-

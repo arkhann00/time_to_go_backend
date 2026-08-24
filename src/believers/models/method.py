@@ -23,4 +23,3 @@ class EvangelismMethod(Base):
 
     owner: Mapped["User | None"] = relationship(back_populates="methods")
     believers: Mapped[list["Believer"]] = relationship(back_populates="method")
-

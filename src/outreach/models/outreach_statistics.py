@@ -13,7 +13,9 @@ if TYPE_CHECKING:
 
 class OutreachStatistics(Base):
     __tablename__ = "outreach_statistics"
-    __table_args__ = (UniqueConstraint("user_id", name="uq_outreach_statistics_user_id"),)
+    __table_args__ = (
+        UniqueConstraint("user_id", name="uq_outreach_statistics_user_id"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(

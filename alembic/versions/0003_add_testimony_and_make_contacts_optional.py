@@ -39,4 +39,3 @@ def downgrade() -> None:
             "telegram IS NOT NULL OR phone_number IS NOT NULL",
         )
         batch_op.drop_column("testimony")
-

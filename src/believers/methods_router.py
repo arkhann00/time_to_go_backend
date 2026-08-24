@@ -4,7 +4,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.auth.dependencies import get_current_user
 from src.auth.models.user import User
-from src.believers.models.believer import Believer
 from src.believers.models.method import EvangelismMethod
 from src.believers.schema.method import MethodCreate, MethodResponse
 from src.believers.services import get_method_statistic, methods_for_user_stmt

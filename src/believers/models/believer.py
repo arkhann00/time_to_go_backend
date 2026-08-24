@@ -5,12 +5,14 @@ from typing import TYPE_CHECKING
 from sqlalchemy import (
     Date,
     DateTime,
-    Enum as SqlEnum,
     Float,
     ForeignKey,
     String,
     Text,
     func,
+)
+from sqlalchemy import (
+    Enum as SqlEnum,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -59,4 +61,3 @@ class Believer(Base):
 
     owner: Mapped["User"] = relationship(back_populates="believers")
     method: Mapped["EvangelismMethod"] = relationship(back_populates="believers")
-

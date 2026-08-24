@@ -5,6 +5,7 @@ from fastapi import HTTPException, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.auth.models.notification_settings import NotificationSettings
 from src.auth.models.user import User
 from src.auth.schema.user import UserLogin, UserRegister, UserUpdate
 from src.auth.security import hash_password, verify_password
@@ -38,6 +39,8 @@ async def register_user(data: UserRegister, db: AsyncSession) -> User:
         hashed_password=hash_password(data.password),
     )
     db.add(user)
+    await db.flush()
+    db.add(NotificationSettings(user_id=user.id))
     await db.commit()
     await db.refresh(user)
     return user

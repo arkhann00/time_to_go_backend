@@ -11,4 +11,3 @@ class MethodResponse(BaseModel):
     is_default: bool
 
     model_config = ConfigDict(from_attributes=True)
-

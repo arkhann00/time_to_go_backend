@@ -4,6 +4,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.auth.dependencies import get_current_user
 from src.auth.models.user import User
+from src.auth.notification_services import (
+    delete_push_device,
+    get_or_create_notification_settings,
+    send_test_push_notification,
+    upsert_push_device,
+)
+from src.auth.schema.notifications import (
+    NotificationSettingsResponse,
+    NotificationSettingsUpdate,
+    PushDeviceDelete,
+    PushDeviceResponse,
+    PushDeviceUpsert,
+)
 from src.auth.schema.user import (
     TokenRefreshRequest,
     TokenResponse,
@@ -21,8 +34,8 @@ from src.auth.services import (
 )
 from src.db.session import get_db
 
-
 router = APIRouter(prefix="/auth", tags=["Auth"])
+
 
 @router.post("/register")
 async def register(
@@ -33,7 +46,9 @@ async def register(
 
 
 @router.post("/login")
-async def login(payload: UserLogin, db: AsyncSession = Depends(get_db)) -> TokenResponse:
+async def login(
+    payload: UserLogin, db: AsyncSession = Depends(get_db)
+) -> TokenResponse:
     user = await authenticate_user(payload, db)
     token = create_access_token(sub=str(user.id))
     return TokenResponse(access_token=token)
@@ -110,7 +125,9 @@ async def delete_user_by_email(
 ) -> None:
     user = await db.scalar(select(User).where(User.email == email))
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Пользователь не найден.")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Пользователь не найден."
+        )
     await db.delete(user)
     await db.commit()
 
@@ -124,22 +141,78 @@ async def upload_my_avatar(
     updated_user = await save_user_avatar(current_user, avatar, db)
     return UserResponse.model_validate(updated_user)
 
+
+@router.put("/me/push-device")
+async def put_my_push_device(
+    payload: PushDeviceUpsert,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> PushDeviceResponse:
+    device = await upsert_push_device(current_user, payload, db)
+    return PushDeviceResponse.model_validate(device)
+
+
+@router.delete("/me/push-device", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_my_push_device(
+    payload: PushDeviceDelete,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    deleted = await delete_push_device(current_user.id, payload.token, db)
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Push-устройство не найдено.",
+        )
+
+
+@router.post("/me/test-push-notification")
+async def send_my_test_push_notification(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, int]:
+    sent_to_devices = await send_test_push_notification(current_user.id, db)
+    return {"sent_to_devices": sent_to_devices}
+
+
+@router.get("/me/notification-settings")
+async def get_my_notification_settings(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> NotificationSettingsResponse:
+    settings = await get_or_create_notification_settings(current_user.id, db)
+    return NotificationSettingsResponse.model_validate(settings)
+
+
+@router.patch("/me/notification-settings")
+async def patch_my_notification_settings(
+    payload: NotificationSettingsUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> NotificationSettingsResponse:
+    settings = await get_or_create_notification_settings(current_user.id, db)
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(settings, field, value)
+    await db.commit()
+    await db.refresh(settings)
+    return NotificationSettingsResponse.model_validate(settings)
+
+
 @router.put("/me/password")
 async def change_password(
     email: str,
     new_password: str,
     db: AsyncSession = Depends(get_db),
 ) -> str:
-     
-    result= await db.execute(select(User).where(User.email == str(email)))
+
+    result = await db.execute(select(User).where(User.email == str(email)))
     current_user = result.scalar_one_or_none()
-    
+
     if not current_user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
-            detail="User not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
-    
+
     current_user.hashed_password = hash_password(new_password)
     await db.commit()
     # await db.refresh(current_user)

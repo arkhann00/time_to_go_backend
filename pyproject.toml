@@ -18,4 +18,30 @@ dependencies = [
     "uvicorn>=0.46.0",
     "greenlet>=3.4.0",
     "bcrypt==4.0.1",
+    "firebase-admin>=7.1.0",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.25.0",
+    "httpx>=0.28.0",
+    "ruff>=0.11.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 88
+
+[tool.ruff.lint]
+# FastAPI declaratively defines dependencies and request parameters in defaults.
+ignore = ["B008"]
+
+[tool.ruff.lint.per-file-ignores]
+# Historical migrations are immutable; retain their original import order.
+"alembic/versions/000*.py" = ["I001"]
