@@ -5,6 +5,7 @@ services:
     environment:
       SECRET_KEY: change-me-in-production
       ADMIN_SECRET_KEY: change-me-admin-key
+      FIREBASE_SERVICE_ACCOUNT_JSON: ${FIREBASE_SERVICE_ACCOUNT_JSON:-}
     volumes:
       - ./data:/app/data
       - ./uploads:/app/uploads

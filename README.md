@@ -82,6 +82,10 @@ FIREBASE_SERVICE_ACCOUNT_PATH=/run/secrets/firebase-service-account.json
 
 Не добавляйте ключ сервисного аккаунта, FCM token или `.env` с секретами в Git.
 
+При запуске через Docker Compose JSON должен быть записан в `.env` **одной
+строкой**, после `FIREBASE_SERVICE_ACCOUNT_JSON=`. Многострочный JSON Compose
+прочитать не сможет. Переменная передаётся в контейнер через `docker-compose.yml`.
+
 Планировщик запускается вместе с FastAPI. Для отдельного production-процесса (это
 предпочтительно при нескольких API-инстансах) запускайте:
 

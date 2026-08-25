@@ -10,6 +10,7 @@ venv/
 # Env and local settings
 .env
 .env.*
+*-firebase-adminsdk-*.json
 
 # Database files
 app.db
