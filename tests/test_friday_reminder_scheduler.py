@@ -30,7 +30,7 @@ async def create_user(
                 NotificationSettings(
                     owner=user,
                     believers_friday_reminder_enabled=True,
-                    believers_friday_reminder_time=time(18, 0),
+                    believers_friday_reminder_time=time(10, 0),
                 ),
                 PushDevice(
                     owner=user,
@@ -79,7 +79,7 @@ async def test_scheduler_selects_user_by_device_local_time(
         delivered.append(token)
 
     count = await run_friday_reminder_cycle(
-        now=datetime(2026, 8, 21, 15, 0, tzinfo=UTC),
+        now=datetime(2026, 8, 22, 7, 0, tzinfo=UTC),
         session_factory=session_factory,
         sender=sender,
     )
@@ -101,7 +101,7 @@ async def test_scheduler_skips_users_without_believers(
     delivered: list[str] = []
 
     count = await run_friday_reminder_cycle(
-        now=datetime(2026, 8, 21, 15, 0, tzinfo=UTC),
+        now=datetime(2026, 8, 22, 7, 0, tzinfo=UTC),
         session_factory=session_factory,
         sender=lambda token: _append(delivered, token),
     )
@@ -122,12 +122,12 @@ async def test_scheduler_deduplicates_friday_delivery(
     delivered: list[str] = []
 
     first = await run_friday_reminder_cycle(
-        now=datetime(2026, 8, 21, 15, 0, tzinfo=UTC),
+        now=datetime(2026, 8, 22, 7, 0, tzinfo=UTC),
         session_factory=session_factory,
         sender=lambda token: _append(delivered, token),
     )
     second = await run_friday_reminder_cycle(
-        now=datetime(2026, 8, 21, 15, 5, tzinfo=UTC),
+        now=datetime(2026, 8, 22, 7, 5, tzinfo=UTC),
         session_factory=session_factory,
         sender=lambda token: _append(delivered, token),
     )

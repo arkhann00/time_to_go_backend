@@ -25,8 +25,8 @@ class NotificationSettings(Base):
     )
     believers_friday_reminder_time: Mapped[time] = mapped_column(
         Time,
-        default=time(18, 0),
-        server_default="18:00",
+        default=time(10, 0),
+        server_default="10:00",
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()

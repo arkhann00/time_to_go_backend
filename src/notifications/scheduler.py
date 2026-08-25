@@ -30,7 +30,7 @@ def is_reminder_due(
 ) -> tuple[bool, datetime]:
     """Return whether a device is within this scheduler's delivery window."""
     local_now = now.astimezone(ZoneInfo(device_timezone))
-    if local_now.weekday() != 4:  # Friday
+    if local_now.weekday() != 5:  # Saturday
         return False, local_now
     scheduled = datetime.combine(
         local_now.date(), reminder_time, tzinfo=local_now.tzinfo
@@ -68,7 +68,7 @@ async def run_friday_reminder_cycle(
     """Send one weekly reminder per eligible user and return claimed deliveries.
 
     The database uniqueness constraint is the cross-process lock: a delivery is claimed
-    before FCM is called, so concurrent API instances cannot duplicate a Friday push.
+    before FCM is called, so concurrent API instances cannot duplicate a Saturday push.
     """
     now = now or datetime.now(UTC)
     if now.tzinfo is None:
@@ -135,7 +135,7 @@ async def run_scheduler_forever() -> None:
         try:
             await run_friday_reminder_cycle()
         except Exception:
-            logger.exception("Friday reminder scheduler cycle failed")
+            logger.exception("Saturday reminder scheduler cycle failed")
         await asyncio.sleep(REMINDER_CHECK_INTERVAL_MINUTES * 60)
 
 

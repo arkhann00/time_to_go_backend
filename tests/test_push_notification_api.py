@@ -50,7 +50,7 @@ async def test_notification_settings_defaults_and_update(client: AsyncClient) ->
     assert response.status_code == 200
     assert response.json() == {
         "believers_friday_reminder_enabled": True,
-        "believers_friday_reminder_time": "18:00",
+        "believers_friday_reminder_time": "10:00",
     }
 
     response = await client.patch(
