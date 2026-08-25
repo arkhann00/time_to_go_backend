@@ -10,6 +10,10 @@ PUSH_TITLE = "Время идти 🙌"
 PUSH_BODY = "Напиши своим ребятам и пригласи их в церковь."
 
 
+class FirebaseNotConfiguredError(RuntimeError):
+    """Raised when push delivery is requested without Firebase credentials."""
+
+
 @lru_cache(maxsize=1)
 def get_firebase_app() -> firebase_admin.App | None:
     """Initialise Firebase only when credentials were deliberately configured."""
@@ -32,7 +36,7 @@ def get_firebase_app() -> firebase_admin.App | None:
 async def send_believers_friday_reminder(token: str) -> None:
     app = get_firebase_app()
     if app is None:
-        raise RuntimeError("Firebase credentials are not configured.")
+        raise FirebaseNotConfiguredError("Firebase credentials are not configured.")
 
     message = messaging.Message(
         token=token,

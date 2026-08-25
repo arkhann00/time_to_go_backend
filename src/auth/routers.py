@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -35,9 +37,13 @@ from src.auth.services import (
     update_user_profile,
 )
 from src.db.session import get_db
-from src.notifications.fcm import send_believers_friday_reminder
+from src.notifications.fcm import (
+    FirebaseNotConfiguredError,
+    send_believers_friday_reminder,
+)
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
+logger = logging.getLogger(__name__)
 
 
 @router.post("/register")
@@ -64,7 +70,14 @@ async def send_public_test_push_notification(
     """Send the standard reminder directly to the supplied FCM token."""
     try:
         await send_believers_friday_reminder(payload.token)
+    except FirebaseNotConfiguredError as error:
+        logger.error("Test push delivery requested but Firebase is not configured")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Отправка уведомлений временно не настроена на сервере.",
+        ) from error
     except Exception as error:
+        logger.exception("Test push delivery failed")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Не удалось отправить тестовое уведомление.",

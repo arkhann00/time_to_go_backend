@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,9 +9,12 @@ from src.auth.models.push_device import PushDevice
 from src.auth.models.user import User
 from src.auth.schema.notifications import PushDeviceUpsert
 from src.notifications.fcm import (
+    FirebaseNotConfiguredError,
     is_invalid_fcm_token_error,
     send_believers_friday_reminder,
 )
+
+logger = logging.getLogger(__name__)
 
 
 async def get_or_create_notification_settings(
@@ -86,10 +91,17 @@ async def send_test_push_notification(user_id: int, db: AsyncSession) -> int:
         try:
             await send_believers_friday_reminder(device.token)
             sent_count += 1
+        except FirebaseNotConfiguredError as error:
+            logger.error("Test push delivery requested but Firebase is not configured")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Отправка уведомлений временно не настроена на сервере.",
+            ) from error
         except Exception as error:
             if is_invalid_fcm_token_error(error):
                 device.enabled = False
                 continue
+            logger.exception("Test push delivery failed for device id=%s", device.id)
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail="Не удалось отправить тестовое уведомление.",

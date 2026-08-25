@@ -1,5 +1,7 @@
 from httpx import AsyncClient
 
+from src.notifications.fcm import FirebaseNotConfiguredError
+
 
 async def register_and_login(
     client: AsyncClient, email: str = "user@example.com"
@@ -111,6 +113,23 @@ async def test_public_test_push_notification_does_not_require_auth(
     assert response.status_code == 200
     assert response.json() == {"sent": True}
     assert sent_tokens == ["public-fcm-token"]
+
+
+async def test_public_test_push_notification_reports_missing_firebase_config(
+    client: AsyncClient, monkeypatch
+) -> None:
+    async def fake_send(_: str) -> None:
+        raise FirebaseNotConfiguredError("Firebase credentials are not configured.")
+
+    monkeypatch.setattr("src.auth.routers.send_believers_friday_reminder", fake_send)
+    response = await client.post(
+        "/auth/test-push-notification", json={"token": "public-fcm-token"}
+    )
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == (
+        "Отправка уведомлений временно не настроена на сервере."
+    )
 
 
 async def test_public_admin_endpoint_returns_saved_push_tokens(
