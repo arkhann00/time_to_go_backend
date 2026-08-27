@@ -6,6 +6,7 @@ services:
       SECRET_KEY: change-me-in-production
       ADMIN_SECRET_KEY: change-me-admin-key
       FIREBASE_SERVICE_ACCOUNT_JSON: ${FIREBASE_SERVICE_ACCOUNT_JSON:-}
+      IPAPI_API_KEY: ${IPAPI_API_KEY:-}
     volumes:
       - ./data:/app/data
       - ./uploads:/app/uploads

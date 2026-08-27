@@ -13,6 +13,7 @@ from src.believers.methods_router import router as methods_router
 from src.believers.routers import router as believers_router
 from src.notifications.scheduler import run_scheduler_forever
 from src.outreach.routers import router as outreach_statistics_router
+from src.settings.router import router as settings_router
 
 
 @asynccontextmanager
@@ -49,6 +50,7 @@ app.include_router(auth_router)
 app.include_router(methods_router)
 app.include_router(believers_router)
 app.include_router(outreach_statistics_router)
+app.include_router(settings_router)
 
 
 @app.get("/")

@@ -9,6 +9,7 @@ from src.auth.routers import router as auth_router
 from src.db import models as _models  # noqa: F401
 from src.db.base import Base
 from src.db.session import get_db
+from src.settings.router import router as settings_router
 
 
 @pytest_asyncio.fixture
@@ -26,6 +27,7 @@ async def client(
 ) -> AsyncIterator[AsyncClient]:
     app = FastAPI()
     app.include_router(auth_router)
+    app.include_router(settings_router)
 
     async def override_get_db() -> AsyncIterator[AsyncSession]:
         async with session_factory() as session:

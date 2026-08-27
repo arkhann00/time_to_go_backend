@@ -37,6 +37,12 @@ API: http://127.0.0.1:8000
 Swagger: http://127.0.0.1:8000/docs
 ```
 
+## Проверка региона для Flutter
+
+- `GET /settings/region-check` — публичная проверка страны и признаков VPN/proxy/Tor
+- Flutter должен показывать предупреждение только при `should_warn: true`
+- полный контракт, примеры ответов и Dart-модель: [REGION_CHECK_API.md](REGION_CHECK_API.md)
+
 ## Профиль пользователя
 
 Защищенные ручки (нужен `Authorization: Bearer <token>`):
