@@ -8,6 +8,7 @@ from firebase_admin import credentials, messaging
 
 PUSH_TITLE = "Время идти 🙌"
 PUSH_BODY = "Напиши своим ребятам и пригласи их в церковь."
+NEW_BELIEVER_FOLLOW_UP_BODY = "Напиши новому верующему {name} — прошло уже 24 часа."
 
 
 class FirebaseNotConfiguredError(RuntimeError):
@@ -42,6 +43,29 @@ async def send_believers_friday_reminder(token: str) -> None:
         token=token,
         notification=messaging.Notification(title=PUSH_TITLE, body=PUSH_BODY),
         data={"type": "believers_friday_reminder", "screen": "believers"},
+        android=messaging.AndroidConfig(
+            notification=messaging.AndroidNotification(channel_id="general")
+        ),
+        apns=messaging.APNSConfig(
+            payload=messaging.APNSPayload(aps=messaging.Aps(sound="default"))
+        ),
+    )
+    await asyncio.to_thread(partial(messaging.send, message, app=app))
+
+
+async def send_new_believer_follow_up(token: str, believer_name: str) -> None:
+    """Ask the owner to follow up 24 hours after adding a believer."""
+    app = get_firebase_app()
+    if app is None:
+        raise FirebaseNotConfiguredError("Firebase credentials are not configured.")
+
+    message = messaging.Message(
+        token=token,
+        notification=messaging.Notification(
+            title=PUSH_TITLE,
+            body=NEW_BELIEVER_FOLLOW_UP_BODY.format(name=believer_name),
+        ),
+        data={"type": "new_believer_follow_up", "screen": "believers"},
         android=messaging.AndroidConfig(
             notification=messaging.AndroidNotification(channel_id="general")
         ),

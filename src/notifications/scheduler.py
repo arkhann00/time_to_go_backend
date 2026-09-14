@@ -15,14 +15,17 @@ from src.db.session import SessionLocal
 from src.notifications.fcm import (
     is_invalid_fcm_token_error,
     send_believers_friday_reminder,
+    send_new_believer_follow_up,
 )
 from src.notifications.models import NotificationDelivery
 
 logger = logging.getLogger(__name__)
 REMINDER_TYPE = "believers_friday_reminder"
+NEW_BELIEVER_FOLLOW_UP_TYPE_PREFIX = "new_believer_follow_up"
 REMINDER_CHECK_INTERVAL_MINUTES = 15
 
 PushSender = Callable[[str], Awaitable[None]]
+FollowUpPushSender = Callable[[str, str], Awaitable[None]]
 
 
 def is_reminder_due(
@@ -43,11 +46,16 @@ def is_reminder_due(
     return due, local_now
 
 
-async def _claim_delivery(db: AsyncSession, user_id: int, local_date: date) -> bool:
+async def _claim_delivery(
+    db: AsyncSession,
+    user_id: int,
+    notification_type: str,
+    local_date: date,
+) -> bool:
     db.add(
         NotificationDelivery(
             user_id=user_id,
-            notification_type=REMINDER_TYPE,
+            notification_type=notification_type,
             local_date=local_date,
         )
     )
@@ -101,7 +109,7 @@ async def run_friday_reminder_cycle(
             )
             if has_believers is None:
                 continue
-            if not await _claim_delivery(db, user_id, local_date):
+            if not await _claim_delivery(db, user_id, REMINDER_TYPE, local_date):
                 continue
 
             devices = await db.scalars(
@@ -129,13 +137,81 @@ async def run_friday_reminder_cycle(
     return sent_count
 
 
+def _new_believer_follow_up_type(believer_id: int) -> str:
+    """Make the delivery journal unique for each believer, not just each user."""
+    return f"{NEW_BELIEVER_FOLLOW_UP_TYPE_PREFIX}:{believer_id}"
+
+
+async def run_new_believer_follow_up_cycle(
+    *,
+    now: datetime | None = None,
+    session_factory: async_sessionmaker[AsyncSession] = SessionLocal,
+    sender: FollowUpPushSender = send_new_believer_follow_up,
+) -> int:
+    """Send one follow-up reminder for every believer added at least 24 hours ago.
+
+    The per-believer type in ``notification_deliveries`` provides an atomic claim,
+    so the reminder cannot be duplicated by concurrent scheduler processes.
+    """
+    now = now or datetime.now(UTC)
+    if now.tzinfo is None:
+        raise ValueError("now must include a timezone")
+
+    eligible_before = now - timedelta(hours=24)
+    sent_count = 0
+    async with session_factory() as db:
+        believers = (
+            await db.scalars(
+                select(Believer)
+                .where(Believer.created_at <= eligible_before)
+                .order_by(Believer.created_at)
+            )
+        ).all()
+        for believer in believers:
+            devices = (
+                await db.scalars(
+                    select(PushDevice).where(
+                        PushDevice.user_id == believer.user_id,
+                        PushDevice.enabled.is_(True),
+                    )
+                )
+            ).all()
+            if not devices:
+                continue
+
+            if not await _claim_delivery(
+                db,
+                believer.user_id,
+                _new_believer_follow_up_type(believer.id),
+                now.date(),
+            ):
+                continue
+
+            for device in devices:
+                try:
+                    await sender(device.token, believer.name)
+                except Exception as error:  # Firebase has several permanent error classes.
+                    if is_invalid_fcm_token_error(error):
+                        device.enabled = False
+                        logger.info("Disabled invalid FCM token for device %s", device.id)
+                    else:
+                        logger.exception(
+                            "Failed to send new-believer follow-up to device %s",
+                            device.id,
+                        )
+            await db.commit()
+            sent_count += 1
+    return sent_count
+
+
 async def run_scheduler_forever() -> None:
     """Standalone scheduler entrypoint for a separate production process."""
     while True:
         try:
             await run_friday_reminder_cycle()
+            await run_new_believer_follow_up_cycle()
         except Exception:
-            logger.exception("Saturday reminder scheduler cycle failed")
+            logger.exception("Push notification scheduler cycle failed")
         await asyncio.sleep(REMINDER_CHECK_INTERVAL_MINUTES * 60)
 
 
