@@ -17,6 +17,7 @@ services:
              uv run uvicorn src.main:app --host 0.0.0.0 --port 8000"
     networks:
       - web
+      - frontend
 
   caddy:
     image: caddy:2-alpine
@@ -37,6 +38,9 @@ services:
 networks:
   web:
     driver: bridge
+  frontend:
+    external: true
+    name: time_to_go_app_default
 
 volumes:
   caddy_data:
