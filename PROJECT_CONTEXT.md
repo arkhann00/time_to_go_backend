@@ -109,9 +109,11 @@ Access token подписывается HS256 и действует 7 дней. 
 
 Формулы `summary`:
 
-- `total_heard_gospel` = число `Believer` + `gospels_told`;
+- `total_heard_gospel` = число `Believer` + `gospels_told`; для общей статистики
+  дополнительно прибавляется историческая поправка `165`;
 - `total_saved` = число `Believer` со стадией не `interested` + `salvation_prayed_unreachable`;
-- `contacts_taken` = число `Believer` с Telegram или телефоном;
+- `contacts_taken` = число `Believer` с Telegram или телефоном; для общей
+  статистики дополнительно прибавляется историческая поправка `56`;
 - остальные показатели — суммы соответствующих ручных счётчиков.
 
 ## Данные и миграции

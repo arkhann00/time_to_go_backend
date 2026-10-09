@@ -20,6 +20,9 @@ from src.outreach.schema.outreach_statistics import (
 
 router = APIRouter(prefix="/outreach-statistics", tags=["Outreach statistics"])
 
+GENERAL_HEARD_GOSPEL_CORRECTION = 165
+GENERAL_CONTACTS_TAKEN_CORRECTION = 56
+
 
 @router.get("/summary")
 async def get_summary_statistics(
@@ -87,10 +90,18 @@ async def get_summary_statistics(
         healings_deliverances_sum,
     ) = stats_row.one()
 
+    is_general = type == StatisticsType.general
     return SummaryStatisticsResponse(
-        total_heard_gospel=believers_count + gospels_told_sum,
+        total_heard_gospel=(
+            believers_count
+            + gospels_told_sum
+            + (GENERAL_HEARD_GOSPEL_CORRECTION if is_general else 0)
+        ),
         total_saved=believers_saved + salvation_prayed_sum,
-        contacts_taken=believers_with_contact,
+        contacts_taken=(
+            believers_with_contact
+            + (GENERAL_CONTACTS_TAKEN_CORRECTION if is_general else 0)
+        ),
         scriptures_distributed=scriptures_distributed_sum,
         fathers_letters_distributed=fathers_letters_sum,
         healings_deliverances=healings_deliverances_sum,
