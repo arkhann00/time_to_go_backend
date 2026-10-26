@@ -20,8 +20,11 @@ from src.outreach.schema.outreach_statistics import (
 
 router = APIRouter(prefix="/outreach-statistics", tags=["Outreach statistics"])
 
-GENERAL_HEARD_GOSPEL_CORRECTION = 165
-GENERAL_CONTACTS_TAKEN_CORRECTION = 56
+GENERAL_HEARD_GOSPEL_CORRECTION = 661
+GENERAL_SAVED_CORRECTION = 171
+GENERAL_SCRIPTURES_DISTRIBUTED_CORRECTION = 321
+GENERAL_FATHERS_LETTERS_DISTRIBUTED_CORRECTION = 315
+GENERAL_HEALINGS_DELIVERANCES_CORRECTION = 21
 
 
 @router.get("/summary")
@@ -97,14 +100,24 @@ async def get_summary_statistics(
             + gospels_told_sum
             + (GENERAL_HEARD_GOSPEL_CORRECTION if is_general else 0)
         ),
-        total_saved=believers_saved + salvation_prayed_sum,
-        contacts_taken=(
-            believers_with_contact
-            + (GENERAL_CONTACTS_TAKEN_CORRECTION if is_general else 0)
+        total_saved=(
+            believers_saved
+            + salvation_prayed_sum
+            + (GENERAL_SAVED_CORRECTION if is_general else 0)
         ),
-        scriptures_distributed=scriptures_distributed_sum,
-        fathers_letters_distributed=fathers_letters_sum,
-        healings_deliverances=healings_deliverances_sum,
+        contacts_taken=believers_with_contact,
+        scriptures_distributed=(
+            scriptures_distributed_sum
+            + (GENERAL_SCRIPTURES_DISTRIBUTED_CORRECTION if is_general else 0)
+        ),
+        fathers_letters_distributed=(
+            fathers_letters_sum
+            + (GENERAL_FATHERS_LETTERS_DISTRIBUTED_CORRECTION if is_general else 0)
+        ),
+        healings_deliverances=(
+            healings_deliverances_sum
+            + (GENERAL_HEALINGS_DELIVERANCES_CORRECTION if is_general else 0)
+        ),
     )
 
 

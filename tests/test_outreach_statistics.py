@@ -57,13 +57,25 @@ async def test_general_summary_adds_historical_corrections_to_database_values(
 
     general_response = await client.get("/outreach-statistics/summary")
     assert general_response.status_code == 200
-    assert general_response.json()["total_heard_gospel"] == 173
-    assert general_response.json()["contacts_taken"] == 57
+    assert general_response.json() == {
+        "total_heard_gospel": 669,
+        "total_saved": 171,
+        "contacts_taken": 1,
+        "scriptures_distributed": 321,
+        "fathers_letters_distributed": 315,
+        "healings_deliverances": 21,
+    }
 
     personal_response = await client.get(
         "/outreach-statistics/summary?type=personal",
         headers=headers,
     )
     assert personal_response.status_code == 200
-    assert personal_response.json()["total_heard_gospel"] == 8
-    assert personal_response.json()["contacts_taken"] == 1
+    assert personal_response.json() == {
+        "total_heard_gospel": 8,
+        "total_saved": 0,
+        "contacts_taken": 1,
+        "scriptures_distributed": 0,
+        "fathers_letters_distributed": 0,
+        "healings_deliverances": 0,
+    }
