@@ -4,24 +4,28 @@ from collections.abc import Awaitable, Callable
 from datetime import UTC, date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import String, cast, select
+from sqlalchemy.dialects.postgresql import insert as postgresql_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from src.auth.models.notification_settings import NotificationSettings
-from src.auth.models.push_device import PushDevice
-from src.believers.models.believer import Believer
+from src.db.models import (
+    Believer,
+    NotificationDelivery,
+    NotificationSettings,
+    PushDevice,
+)
 from src.db.session import SessionLocal
 from src.notifications.fcm import (
     is_invalid_fcm_token_error,
     send_believers_friday_reminder,
     send_new_believer_follow_up,
 )
-from src.notifications.models import NotificationDelivery
 
 logger = logging.getLogger(__name__)
 REMINDER_TYPE = "believers_friday_reminder"
 NEW_BELIEVER_FOLLOW_UP_TYPE_PREFIX = "new_believer_follow_up"
+NEW_BELIEVER_FOLLOW_UP_DELAY = timedelta(hours=24)
 REMINDER_CHECK_INTERVAL_MINUTES = 15
 
 PushSender = Callable[[str], Awaitable[None]]
@@ -52,19 +56,24 @@ async def _claim_delivery(
     notification_type: str,
     local_date: date,
 ) -> bool:
-    db.add(
-        NotificationDelivery(
+    insert = (
+        sqlite_insert if db.get_bind().dialect.name == "sqlite" else postgresql_insert
+    )
+    statement = (
+        insert(NotificationDelivery)
+        .values(
             user_id=user_id,
             notification_type=notification_type,
             local_date=local_date,
         )
+        .on_conflict_do_nothing(
+            index_elements=["user_id", "notification_type", "local_date"]
+        )
+        .returning(NotificationDelivery.id)
     )
-    try:
-        await db.commit()
-    except IntegrityError:
-        await db.rollback()
-        return False
-    return True
+    delivery_id = await db.scalar(statement)
+    await db.commit()
+    return delivery_id is not None
 
 
 async def run_friday_reminder_cycle(
@@ -137,11 +146,6 @@ async def run_friday_reminder_cycle(
     return sent_count
 
 
-def _new_believer_follow_up_type(believer_id: int) -> str:
-    """Make the delivery journal unique for each believer, not just each user."""
-    return f"{NEW_BELIEVER_FOLLOW_UP_TYPE_PREFIX}:{believer_id}"
-
-
 async def run_new_believer_follow_up_cycle(
     *,
     now: datetime | None = None,
@@ -157,21 +161,33 @@ async def run_new_believer_follow_up_cycle(
     if now.tzinfo is None:
         raise ValueError("now must include a timezone")
 
-    eligible_before = now - timedelta(hours=24)
+    eligible_before = now - NEW_BELIEVER_FOLLOW_UP_DELAY
+    notification_type = f"{NEW_BELIEVER_FOLLOW_UP_TYPE_PREFIX}:" + cast(
+        Believer.id, String
+    )
+    # Older versions recorded the run date. Any existing entry counts as a claim.
+    already_claimed = (
+        select(NotificationDelivery.id)
+        .where(
+            NotificationDelivery.user_id == Believer.user_id,
+            NotificationDelivery.notification_type == notification_type,
+        )
+        .exists()
+    )
     sent_count = 0
     async with session_factory() as db:
-        believers = (
-            await db.scalars(
-                select(Believer)
-                .where(Believer.created_at <= eligible_before)
-                .order_by(Believer.created_at)
+        believers = await db.execute(
+            select(
+                Believer.user_id, Believer.name, Believer.created_at, notification_type
             )
-        ).all()
-        for believer in believers:
+            .where(Believer.created_at <= eligible_before, ~already_claimed)
+            .order_by(Believer.created_at)
+        )
+        for user_id, name, created_at, delivery_type in believers:
             devices = (
                 await db.scalars(
                     select(PushDevice).where(
-                        PushDevice.user_id == believer.user_id,
+                        PushDevice.user_id == user_id,
                         PushDevice.enabled.is_(True),
                     )
                 )
@@ -179,21 +195,24 @@ async def run_new_believer_follow_up_cycle(
             if not devices:
                 continue
 
-            if not await _claim_delivery(
-                db,
-                believer.user_id,
-                _new_believer_follow_up_type(believer.id),
-                now.date(),
-            ):
+            # Concurrent cycles use the same UTC date, even if they run on different days.
+            if created_at.tzinfo is None:
+                created_at = created_at.replace(tzinfo=UTC)
+            ready_at = created_at.astimezone(UTC) + NEW_BELIEVER_FOLLOW_UP_DELAY
+            if not await _claim_delivery(db, user_id, delivery_type, ready_at.date()):
                 continue
 
             for device in devices:
                 try:
-                    await sender(device.token, believer.name)
-                except Exception as error:  # Firebase has several permanent error classes.
+                    await sender(device.token, name)
+                except (
+                    Exception
+                ) as error:  # Firebase has several permanent error classes.
                     if is_invalid_fcm_token_error(error):
                         device.enabled = False
-                        logger.info("Disabled invalid FCM token for device %s", device.id)
+                        logger.info(
+                            "Disabled invalid FCM token for device %s", device.id
+                        )
                     else:
                         logger.exception(
                             "Failed to send new-believer follow-up to device %s",

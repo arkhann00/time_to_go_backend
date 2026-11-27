@@ -192,6 +192,11 @@ async def test_new_believer_follow_up_is_sent_after_24_hours_once(
         session_factory=session_factory,
         sender=sender,
     )
+    next_day = await run_new_believer_follow_up_cycle(
+        now=added_at + timedelta(days=2),
+        session_factory=session_factory,
+        sender=sender,
+    )
 
     async with session_factory() as db:
         delivery_count = await db.scalar(
@@ -203,8 +208,58 @@ async def test_new_believer_follow_up_is_sent_after_24_hours_once(
         )
     assert first == 1
     assert second == 0
+    assert next_day == 0
     assert delivered == [("follow-up-token", "Алексей")]
     assert delivery_count == 1
+
+
+async def test_follow_up_skips_existing_delivery_and_continues_cycle(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    already_notified = await create_user(
+        session_factory,
+        email="already@example.com",
+        token="already-token",
+        timezone="Europe/Moscow",
+    )
+    await create_user(
+        session_factory,
+        email="pending@example.com",
+        token="pending-token",
+        timezone="Europe/Moscow",
+    )
+    now = datetime(2026, 8, 24, 7, 0, tzinfo=UTC)
+    async with session_factory() as db:
+        believers = (
+            await db.scalars(select(Believer).order_by(Believer.user_id))
+        ).all()
+        existing, pending = believers
+        existing.created_at = now - timedelta(days=3)
+        pending.created_at = now - timedelta(days=2)
+        db.add(
+            NotificationDelivery(
+                user_id=already_notified.id,
+                notification_type=f"new_believer_follow_up:{existing.id}",
+                local_date=now.date(),
+            )
+        )
+        await db.commit()
+
+    delivered: list[tuple[str, str]] = []
+    count = await run_new_believer_follow_up_cycle(
+        now=now,
+        session_factory=session_factory,
+        sender=lambda token, name: _append_follow_up(delivered, token, name),
+    )
+    next_day = await run_new_believer_follow_up_cycle(
+        now=now + timedelta(days=1),
+        session_factory=session_factory,
+        sender=lambda token, name: _append_follow_up(delivered, token, name),
+    )
+
+    assert count == 1
+    assert next_day == 0
+    assert delivered == [("pending-token", "Believer")]
 
 
 async def test_new_believer_follow_up_waits_full_24_hours(
